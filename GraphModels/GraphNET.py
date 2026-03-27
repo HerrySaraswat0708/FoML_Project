@@ -11,7 +11,7 @@ class GraphNET(MessagePassing):
 
         self.lin = Linear(in_channels, out_channels, bias=False)
         self.att = Parameter(torch.Tensor(2 * out_channels))
-
+        self.linf = Linear(out_channels,1)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -22,6 +22,7 @@ class GraphNET(MessagePassing):
         x = self.lin(x)
         x = self.propagate(edge_index, x=x)
         x = global_mean_pool(x,batch)
+        x = self.linf(x)
         return x
 
     def message(self, x_i, x_j, index):
