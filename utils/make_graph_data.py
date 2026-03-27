@@ -13,6 +13,7 @@ RDLogger.DisableLog('rdApp.*')
 #     return name[:50]  
 
 df = pd.read_csv('data\\curated-solubility-dataset.csv')
+
 # print(df)
 # def get_bond_weight(bond):
 #     btype = bond.GetBondType()
