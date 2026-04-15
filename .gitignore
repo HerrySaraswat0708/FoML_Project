@@ -1,0 +1,10 @@
+models/
+outputs/
+venv/
+.venv/
+data/*.npy
+data/*.pt
+!data/curated-solubility-dataset.csv
+__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
