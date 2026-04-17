@@ -10,7 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from DNN import build_mlp_regressor
-from utils.data_utils import build_classical_feature_matrix, load_dataset, split_classical_data
+from utils.data_utils import build_classical_feature_matrix, fit_pca_projection, load_dataset, split_classical_data
 from utils.training_utils import save_sklearn_run, set_global_seed
 
 
@@ -24,7 +24,8 @@ def train_and_evaluate(
 ) -> dict[str, float]:
     set_global_seed(random_state)
     frame = load_dataset()
-    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=feature_mode)
+    source_feature_mode = "combined" if feature_mode == "pca3d" else feature_mode
+    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=source_feature_mode)
     X_train, X_test, y_train, y_test, _, frame_test = split_classical_data(
         X,
         y,
@@ -32,6 +33,10 @@ def train_and_evaluate(
         test_size=test_size,
         random_state=random_state,
     )
+    pca_explained_variance = None
+    if feature_mode == "pca3d":
+        X_train, X_test, feature_names, _, pca = fit_pca_projection(X_train, X_test, n_components=3)
+        pca_explained_variance = float(sum(pca.explained_variance_ratio_))
 
     model = build_mlp_regressor(
         hidden_layer_sizes=hidden_layers,
@@ -43,14 +48,16 @@ def train_and_evaluate(
 
     _, metrics = save_sklearn_run(
         family="dnn",
-        model_name="sklearn_mlp_regressor",
+        model_name="sklearn_mlp_regressor_pca3d" if feature_mode == "pca3d" else "sklearn_mlp_regressor",
         model=model,
         test_frame=frame_test,
         y_test=y_test,
         y_pred=y_pred,
         extra_metadata={
             "feature_mode": feature_mode,
+            "source_feature_mode": source_feature_mode,
             "num_features": len(feature_names),
+            "pca_explained_variance": pca_explained_variance,
             "hidden_layers": list(hidden_layers),
             "alpha": alpha,
             "learning_rate_init": learning_rate_init,
@@ -70,7 +77,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate-init", type=float, default=1e-3)
     parser.add_argument(
         "--feature-mode",
-        choices=["fingerprint", "descriptor", "combined"],
+        choices=["fingerprint", "descriptor", "combined", "pca3d"],
         default="combined",
     )
     return parser.parse_args()

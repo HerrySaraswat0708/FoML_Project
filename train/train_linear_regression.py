@@ -15,7 +15,7 @@ from ClassicalModels import (
     build_linear_regression,
     build_ridge_regression,
 )
-from utils.data_utils import build_classical_feature_matrix, load_dataset, split_classical_data
+from utils.data_utils import build_classical_feature_matrix, fit_pca_projection, load_dataset, split_classical_data
 from utils.project_paths import OUTPUTS_DIR
 from utils.training_utils import save_sklearn_run, set_global_seed
 
@@ -74,7 +74,8 @@ def resolve_linear_config(
     best_params = json.loads(str(best["best_params"]))
     reverse_variants = {value: key for key, value in linear_candidates.items()}
     config["model_variant"] = reverse_variants[chosen_key]
-    config["feature_mode"] = str(best.get("feature_mode", config["feature_mode"]))
+    if config["feature_mode"] != "pca3d":
+        config["feature_mode"] = str(best.get("feature_mode", config["feature_mode"]))
     config["alpha"] = float(best_params.get("model__alpha", config["alpha"]))
     config["l1_ratio"] = float(best_params.get("model__l1_ratio", config["l1_ratio"]))
     config["fit_intercept"] = bool(best_params.get("fit_intercept", best_params.get("model__fit_intercept", config["fit_intercept"])))
@@ -110,7 +111,8 @@ def train_and_evaluate(
     fit_intercept = bool(resolved["fit_intercept"])
     positive = bool(resolved["positive"])
     frame = load_dataset()
-    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=feature_mode)
+    source_feature_mode = "combined" if feature_mode == "pca3d" else feature_mode
+    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=source_feature_mode)
     X_train, X_test, y_train, y_test, _, frame_test = split_classical_data(
         X,
         y,
@@ -118,6 +120,10 @@ def train_and_evaluate(
         test_size=test_size,
         random_state=random_state,
     )
+    pca_explained_variance = None
+    if feature_mode == "pca3d":
+        X_train, X_test, feature_names, _, pca = fit_pca_projection(X_train, X_test, n_components=3)
+        pca_explained_variance = float(sum(pca.explained_variance_ratio_))
 
     if model_variant == "linear":
         model = build_linear_regression(fit_intercept=fit_intercept, positive=positive)
@@ -139,7 +145,7 @@ def train_and_evaluate(
 
     _, metrics = save_sklearn_run(
         family="classical",
-        model_name=model_name,
+        model_name=f"{model_name}_pca3d" if feature_mode == "pca3d" else model_name,
         model=model,
         test_frame=frame_test,
         y_test=y_test,
@@ -147,7 +153,9 @@ def train_and_evaluate(
         extra_metadata={
             "model_variant": model_variant,
             "feature_mode": feature_mode,
+            "source_feature_mode": source_feature_mode,
             "num_features": len(feature_names),
+            "pca_explained_variance": pca_explained_variance,
             "alpha": alpha,
             "l1_ratio": l1_ratio,
             "fit_intercept": fit_intercept,
@@ -165,7 +173,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument(
         "--feature-mode",
-        choices=["fingerprint", "descriptor", "combined"],
+        choices=["fingerprint", "descriptor", "combined", "pca3d"],
         default="combined",
     )
     parser.add_argument("--model-variant", choices=["auto", "linear", "ridge", "lasso", "elastic_net"], default="auto")

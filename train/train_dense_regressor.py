@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from DNN import DenseRegressor
-from utils.data_utils import build_classical_feature_matrix, load_dataset, split_classical_data
+from utils.data_utils import build_classical_feature_matrix, fit_pca_projection, load_dataset, split_classical_data
 from utils.training_utils import (
     get_torch_device,
     predict_torch_regressor,
@@ -40,7 +40,8 @@ def train_and_evaluate(
     set_global_seed(random_state)
     torch_device = get_torch_device() if device == "auto" else None
     frame = load_dataset()
-    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=feature_mode)
+    source_feature_mode = "combined" if feature_mode == "pca3d" else feature_mode
+    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=source_feature_mode)
     X_train, X_test, y_train, y_test, frame_train, frame_test = split_classical_data(
         X,
         y,
@@ -57,10 +58,15 @@ def train_and_evaluate(
         shuffle=True,
     )
 
-    scaler = StandardScaler()
-    X_fit = scaler.fit_transform(X_fit)
-    X_val = scaler.transform(X_val)
-    X_test_scaled = scaler.transform(X_test)
+    pca_explained_variance = None
+    if feature_mode == "pca3d":
+        X_fit, X_val, X_test_scaled, feature_names, scaler, pca = fit_pca_projection(X_fit, X_val, X_test, n_components=3)
+        pca_explained_variance = float(sum(pca.explained_variance_ratio_))
+    else:
+        scaler = StandardScaler()
+        X_fit = scaler.fit_transform(X_fit)
+        X_val = scaler.transform(X_val)
+        X_test_scaled = scaler.transform(X_test)
 
     model = DenseRegressor(
         input_dim=X_fit.shape[1],
@@ -84,7 +90,7 @@ def train_and_evaluate(
 
     output_dir, metrics = save_torch_run(
         family="dnn",
-        model_name="dense_regressor",
+        model_name="dense_regressor_pca3d" if feature_mode == "pca3d" else "dense_regressor",
         state_dict=model.state_dict(),
         history=history,
         test_frame=frame_test,
@@ -92,7 +98,9 @@ def train_and_evaluate(
         y_pred=y_pred,
         extra_metadata={
             "feature_mode": feature_mode,
+            "source_feature_mode": source_feature_mode,
             "num_features": len(feature_names),
+            "pca_explained_variance": pca_explained_variance,
             "hidden_layers": list(hidden_layers),
             "dropout": dropout,
             "epochs": epochs,
@@ -111,6 +119,7 @@ def train_and_evaluate(
             "input_dim": X_fit.shape[1],
             "hidden_layers": list(hidden_layers),
             "dropout": dropout,
+            "feature_mode": feature_mode,
         },
     )
     return metrics
@@ -129,7 +138,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument(
         "--feature-mode",
-        choices=["fingerprint", "descriptor", "combined"],
+        choices=["fingerprint", "descriptor", "combined", "pca3d"],
         default="combined",
     )
     return parser.parse_args()

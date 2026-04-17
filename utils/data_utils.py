@@ -9,8 +9,10 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors, rdFingerprintGenerator
 from rdkit.DataStructs import ConvertToNumpyArray
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
-from .project_paths import DATASET_PATH, FEATURE_MATRIX_PATH, GRAPH_DATASET_PATH, TARGET_VECTOR_PATH
+from .project_paths import DATASET_PATH, FEATURE_MATRIX_PATH, GRAPH_DATASET_PATH, PCA3D_DATASET_PATH, TARGET_VECTOR_PATH
 
 DEFAULT_DESCRIPTOR_NAMES: tuple[str, ...] = (
     "NumHDonors",
@@ -165,6 +167,62 @@ def save_classical_arrays(
 ) -> None:
     np.save(feature_path, X)
     np.save(target_path, y)
+
+
+def fit_pca_projection(
+    train_features: np.ndarray,
+    *other_feature_sets: np.ndarray,
+    n_components: int = 3,
+) -> tuple[np.ndarray, ...]:
+    scaler = StandardScaler()
+    train_scaled = scaler.fit_transform(train_features)
+    pca = PCA(n_components=n_components, random_state=42)
+    train_projected = pca.fit_transform(train_scaled).astype(np.float32)
+
+    transformed_sets: list[np.ndarray] = [train_projected]
+    for feature_set in other_feature_sets:
+        projected = pca.transform(scaler.transform(feature_set)).astype(np.float32)
+        transformed_sets.append(projected)
+
+    feature_names = [f"pca_component_{index + 1}" for index in range(n_components)]
+    transformed_sets.append(feature_names)
+    transformed_sets.append(scaler)
+    transformed_sets.append(pca)
+    return tuple(transformed_sets)
+
+
+def build_pca3d_dataset(
+    frame: pd.DataFrame,
+    source_feature_mode: str = "combined",
+    n_components: int = 3,
+) -> pd.DataFrame:
+    X, y, clean_frame, _ = build_classical_feature_matrix(frame, feature_mode=source_feature_mode)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    pca = PCA(n_components=n_components, random_state=42)
+    projected = pca.fit_transform(X_scaled)
+
+    report = clean_frame.copy()
+    for index in range(n_components):
+        report[f"pca_component_{index + 1}"] = projected[:, index]
+    report["source_feature_mode"] = source_feature_mode
+    report["pca_total_variance_explained"] = float(np.sum(pca.explained_variance_ratio_))
+    return report
+
+
+def save_pca3d_dataset(
+    frame: pd.DataFrame,
+    path=PCA3D_DATASET_PATH,
+    source_feature_mode: str = "combined",
+    n_components: int = 3,
+) -> pd.DataFrame:
+    dataset = build_pca3d_dataset(
+        frame=frame,
+        source_feature_mode=source_feature_mode,
+        n_components=n_components,
+    )
+    dataset.to_csv(path, index=False)
+    return dataset
 
 
 def atom_feature_vector(atom: Chem.Atom, feature_variant: str = "full") -> list[float]:

@@ -9,6 +9,7 @@ DATASET_PATH = DATA_DIR / "curated-solubility-dataset.csv"
 FEATURE_MATRIX_PATH = DATA_DIR / "X.npy"
 TARGET_VECTOR_PATH = DATA_DIR / "y.npy"
 GRAPH_DATASET_PATH = DATA_DIR / "aqsoldb_graph_dataset.pt"
+PCA3D_DATASET_PATH = DATA_DIR / "pca3d_feature_dataset.csv"
 
 
 def ensure_dir(path: Path) -> Path:
@@ -22,4 +23,3 @@ def model_output_dir(family: str, model_name: str) -> Path:
 
 def study_output_dir(study_name: str) -> Path:
     return ensure_dir(OUTPUTS_DIR / study_name)
-

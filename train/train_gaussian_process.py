@@ -10,7 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ClassicalModels import build_gaussian_process
-from utils.data_utils import build_classical_feature_matrix, load_dataset, split_classical_data
+from utils.data_utils import build_classical_feature_matrix, fit_pca_projection, load_dataset, split_classical_data
 from utils.project_paths import OUTPUTS_DIR
 from utils.training_utils import save_sklearn_run, set_global_seed
 
@@ -45,9 +45,11 @@ def train_and_evaluate(
             matern_nu = float(best.get("matern_nu", matern_nu))
             rq_alpha = float(best.get("rq_alpha", rq_alpha))
             alpha = float(best.get("alpha_value", alpha))
-            feature_mode = str(best.get("feature_mode", feature_mode))
+            if feature_mode != "pca3d":
+                feature_mode = str(best.get("feature_mode", feature_mode))
     frame = load_dataset()
-    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=feature_mode)
+    source_feature_mode = "combined" if feature_mode == "pca3d" else feature_mode
+    X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=source_feature_mode)
     X_train, X_test, y_train, y_test, _, frame_test = split_classical_data(
         X,
         y,
@@ -55,6 +57,10 @@ def train_and_evaluate(
         test_size=test_size,
         random_state=random_state,
     )
+    pca_explained_variance = None
+    if feature_mode == "pca3d":
+        X_train, X_test, feature_names, _, pca = fit_pca_projection(X_train, X_test, n_components=3)
+        pca_explained_variance = float(sum(pca.explained_variance_ratio_))
 
     model = build_gaussian_process(
         kernel_name=kernel_name,
@@ -68,14 +74,16 @@ def train_and_evaluate(
 
     _, metrics = save_sklearn_run(
         family="classical",
-        model_name="gaussian_process",
+        model_name="gaussian_process_pca3d" if feature_mode == "pca3d" else "gaussian_process",
         model=model,
         test_frame=frame_test,
         y_test=y_test,
         y_pred=y_pred,
         extra_metadata={
             "feature_mode": feature_mode,
+            "source_feature_mode": source_feature_mode,
             "num_features": len(feature_names),
+            "pca_explained_variance": pca_explained_variance,
             "kernel_name": kernel_name,
             "length_scale": length_scale,
             "matern_nu": matern_nu,
@@ -99,7 +107,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--alpha", type=float, default=1e-6)
     parser.add_argument(
         "--feature-mode",
-        choices=["fingerprint", "descriptor", "combined"],
+        choices=["fingerprint", "descriptor", "combined", "pca3d"],
         default="descriptor",
     )
     parser.add_argument("--use-best-config", type=int, choices=[0, 1], default=1)

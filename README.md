@@ -21,6 +21,7 @@ AqSolDB/
 |-- ClassicalModels/   # builders for regression baselines and their classification-study variants
 |-- GraphML/           # graph neural network model definitions
 |-- DNN/               # dense neural network model definitions
+|-- EDA/               # exploratory analysis scripts for report visuals
 |-- train/             # end-to-end training scripts for each model
 |-- tuning/            # hyperparameter search scripts
 |-- ablation/          # ablation-study scripts
@@ -93,6 +94,12 @@ python ablation\run_graph_ablation.py
 
 ```powershell
 streamlit run app.py
+```
+
+### 6. Generate EDA figures for the report
+
+```powershell
+python EDA\generate_eda_report.py
 ```
 
 ## Output Layout
