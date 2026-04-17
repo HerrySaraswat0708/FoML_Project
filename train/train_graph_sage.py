@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from GraphML import GraphSAGE
 from utils.data_utils import build_graph_dataset, load_dataset
-from utils.training_utils import predict_graph_regressor, save_torch_run, set_global_seed, train_graph_regressor
+from utils.training_utils import get_torch_device, predict_graph_regressor, save_torch_run, set_global_seed, train_graph_regressor
 
 
 def train_and_evaluate(
@@ -24,8 +24,10 @@ def train_and_evaluate(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
+    device: str = "auto",
 ) -> dict[str, float]:
     set_global_seed(random_state)
+    torch_device = get_torch_device() if device == "auto" else None
     frame = load_dataset()
     dataset = build_graph_dataset(frame)
 
@@ -44,7 +46,8 @@ def train_and_evaluate(
     )
 
     input_dim = dataset[0].x.shape[1]
-    model = GraphSAGE(in_channels=input_dim, out_channels=hidden_channels)
+    global_dim = int(dataset[0].global_features.shape[0]) if hasattr(dataset[0], "global_features") else 0
+    model = GraphSAGE(in_channels=input_dim, out_channels=hidden_channels, global_dim=global_dim)
     model, history = train_graph_regressor(
         model=model,
         train_dataset=fit_dataset,
@@ -53,6 +56,8 @@ def train_and_evaluate(
         batch_size=batch_size,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
+        patience=25,
+        device=device,
     )
     y_pred = predict_graph_regressor(model, test_dataset, batch_size=batch_size)
     y_test = frame_test["Solubility"].to_numpy(dtype=float)
@@ -71,6 +76,7 @@ def train_and_evaluate(
             "batch_size": batch_size,
             "learning_rate": learning_rate,
             "weight_decay": weight_decay,
+            "device": getattr(model, "device_type", torch_device.type if torch_device is not None else device),
             "train_graphs": len(train_dataset),
             "test_graphs": len(test_dataset),
         },
@@ -87,6 +93,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-5)
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     return parser.parse_args()
 
 
@@ -100,6 +107,7 @@ def main() -> None:
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,
+        device=args.device,
     )
     print(json.dumps(metrics, indent=2))
 

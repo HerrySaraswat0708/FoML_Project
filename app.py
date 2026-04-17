@@ -6,8 +6,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from utils.data_utils import load_dataset
-from utils.project_paths import OUTPUTS_DIR
+from projects.FoML_Project.utils.data_utils import load_dataset
+from projects.FoML_Project.utils.project_paths import OUTPUTS_DIR
 
 
 @st.cache_data

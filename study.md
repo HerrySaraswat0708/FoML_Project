@@ -416,7 +416,7 @@ Behavior:
 
 ### 7.5 MLP Regressor
 
-**Implemented in:** `ClassicalModels/MLPR.py`  
+**Implemented in:** `DNN/sklearn_mlp.py`  
 **Trained by:** `train/train_mlp_regressor.py`
 
 This is scikit-learn's `MLPRegressor` wrapped in a `StandardScaler` pipeline.
@@ -460,13 +460,13 @@ Behavior:
 
 Outputs after running:
 
-- `outputs/classical/mlp_regressor/model.joblib`
-- `outputs/classical/mlp_regressor/metrics.json`
-- `outputs/classical/mlp_regressor/predictions.csv`
+- `outputs/dnn/sklearn_mlp_regressor/model.joblib`
+- `outputs/dnn/sklearn_mlp_regressor/metrics.json`
+- `outputs/dnn/sklearn_mlp_regressor/predictions.csv`
 
 ### 7.6 MLP Classifier
 
-**Implemented in:** `ClassicalModels/MLPR.py`  
+**Implemented in:** `DNN/sklearn_mlp.py`  
 **Used by:** `ablation/run_feature_ablation.py`
 
 This is the classification counterpart of the scikit-learn MLP regressor.
@@ -779,7 +779,7 @@ The key lesson is that parameter count does not fully explain runtime:
 |---|---|---|
 | `train/train_linear_regression.py` | Linear regression | `outputs/classical/linear_regression/` |
 | `train/train_gaussian_process.py` | Gaussian process regression | `outputs/classical/gaussian_process/` |
-| `train/train_mlp_regressor.py` | scikit-learn MLP regressor | `outputs/classical/mlp_regressor/` |
+| `train/train_mlp_regressor.py` | scikit-learn MLP regressor | `outputs/dnn/sklearn_mlp_regressor/` |
 | `train/train_dense_regressor.py` | PyTorch dense regressor | `outputs/dnn/dense_regressor/` |
 | `train/train_graph_cn.py` | GraphCN | `outputs/graphml/graph_cn/` |
 | `train/train_graph_net.py` | GraphNET | `outputs/graphml/graph_net/` |

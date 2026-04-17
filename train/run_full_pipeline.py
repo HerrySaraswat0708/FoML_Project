@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+import argparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -18,19 +19,22 @@ from train.train_linear_regression import train_and_evaluate as train_linear_reg
 from train.train_mlp_regressor import train_and_evaluate as train_mlp_regressor
 
 
-def main() -> None:
+def main(device: str = "auto") -> None:
     summary = {
         "linear_regression": train_linear_regression(),
         "gaussian_process": train_gaussian_process(),
         "mlp_regressor": train_mlp_regressor(),
-        "dense_regressor": train_dense_regressor(),
-        "graph_cn": train_graph_cn(),
-        "graph_net": train_graph_net(),
-        "graph_sage": train_graph_sage(),
-        "graph_mp": train_graph_mp(),
+        "dense_regressor": train_dense_regressor(device=device),
+        "graph_cn": train_graph_cn(device=device),
+        "graph_net": train_graph_net(device=device),
+        "graph_sage": train_graph_sage(device=device),
+        "graph_mp": train_graph_mp(device=device),
     }
     print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run the full training pipeline.")
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    args = parser.parse_args()
+    main(device=args.device)

@@ -173,10 +173,19 @@ def atom_feature_vector(atom: Chem.Atom, feature_variant: str = "full") -> list[
     if feature_variant == "atomic_number_degree":
         return [float(atom.GetAtomicNum()), float(atom.GetDegree())]
     if feature_variant == "full":
+        hybridization = atom.GetHybridization()
         return [
             float(atom.GetAtomicNum()),
             float(atom.GetDegree()),
+            float(atom.GetFormalCharge()),
+            float(atom.GetTotalNumHs()),
+            float(atom.GetImplicitValence()),
+            float(atom.GetTotalValence()),
             float(int(atom.GetIsAromatic())),
+            float(int(atom.IsInRing())),
+            float(int(hybridization == Chem.rdchem.HybridizationType.SP)),
+            float(int(hybridization == Chem.rdchem.HybridizationType.SP2)),
+            float(int(hybridization == Chem.rdchem.HybridizationType.SP3)),
         ]
     raise ValueError("feature_variant must be atomic_number, atomic_number_degree, or full")
 
@@ -227,6 +236,10 @@ def build_graph_dataset(
 
         graph = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
         graph.y = torch.tensor([float(row["Solubility"])], dtype=torch.float)
+        graph.global_features = torch.tensor(
+            descriptor_vector(molecule=molecule),
+            dtype=torch.float,
+        )
         graph.name = str(row["Name"])
         graph.smiles = str(row["SMILES"])
         dataset.append(graph)

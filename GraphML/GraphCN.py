@@ -1,49 +1,46 @@
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+from __future__ import annotations
+
 import torch
-from torch.nn import Linear, Parameter
-from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import add_self_loops, degree
-from torch_geometric.nn import global_mean_pool
+import torch.nn.functional as F
+from torch import nn
+from torch_geometric.nn import GCNConv, global_mean_pool
 
-class GraphCN(MessagePassing):
-    def __init__(self, in_channels, out_channels):
-        super().__init__(aggr='add')  # "Add" aggregation (Step 5).
-        self.lin = Linear(in_channels, out_channels, bias=False)
-        self.bias = Parameter(torch.empty(out_channels))
-        self.linf = Linear(out_channels, 1)
-        self.reset_parameters()
 
-    def reset_parameters(self):
-        self.lin.reset_parameters()
-        self.bias.data.zero_()
+class GraphCN(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        global_dim: int = 0,
+        dropout: float = 0.15,
+    ) -> None:
+        super().__init__()
+        hidden_channels = out_channels
+        readout_input_dim = hidden_channels + global_dim
+        self.conv1 = GCNConv(in_channels, hidden_channels)
+        self.conv2 = GCNConv(hidden_channels, hidden_channels)
+        self.norm1 = nn.BatchNorm1d(hidden_channels)
+        self.norm2 = nn.BatchNorm1d(hidden_channels)
+        self.dropout = float(dropout)
+        self.readout = nn.Sequential(
+            nn.Linear(readout_input_dim, hidden_channels // 2),
+            nn.ReLU(),
+            nn.Dropout(p=self.dropout),
+            nn.Linear(hidden_channels // 2, 1),
+        )
 
-    def forward(self, x, edge_index, batch):
-        # x has shape [N, in_channels]
-        # edge_index has shape [2, E]
+    def forward(self, x, edge_index, batch, global_features=None):
+        x = self.conv1(x, edge_index)
+        x = self.norm1(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
 
-        # Step 1: Add self-loops to the adjacency matrix.
-        edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+        x = self.conv2(x, edge_index)
+        x = self.norm2(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
 
-        # Step 2: Linearly transform node feature matrix.
-        x = self.lin(x)
-
-        # Step 3: Compute normalization.
-        row, col = edge_index
-        deg = degree(col, x.size(0), dtype=x.dtype)
-        deg_inv_sqrt = deg.pow(-0.5)
-        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-        norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
-
-        # Step 4-5: Start propagating messages.
-        out = self.propagate(edge_index, x=x, norm=norm)
-        out = global_mean_pool(out, batch)
-        # Step 6: Apply a final bias vector.
-        out = out + self.bias
-        out = self.linf(out)
-        return out
-
-    
-    def message(self, x_j, norm):
-        # x_j has shape [E, out_channels]
-        return norm.view(-1, 1) * x_j
+        x = global_mean_pool(x, batch)
+        if global_features is not None:
+            x = torch.cat([x, global_features], dim=1)
+        return self.readout(x)

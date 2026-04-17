@@ -12,21 +12,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ClassicalModels import (
-    build_gaussian_process_classifier,
-    build_logistic_regression,
-    build_mlp_classifier,
-)
-from DNN import DenseClassifier
-from utils.data_utils import (
+from projects.FoML_Project.ClassicalModels import build_gaussian_process_classifier, build_logistic_regression
+from projects.FoML_Project.DNN import DenseClassifier, build_mlp_classifier
+from projects.FoML_Project.utils.data_utils import (
     build_classical_feature_matrix,
     load_dataset,
     make_binary_labels,
     split_classical_data,
 )
-from utils.metrics import classification_metrics
-from utils.project_paths import study_output_dir
-from utils.training_utils import (
+from projects.FoML_Project.utils.metrics import classification_metrics
+from projects.FoML_Project.utils.project_paths import study_output_dir
+from projects.FoML_Project.utils.training_utils import (
     predict_torch_binary_classifier,
     set_global_seed,
     train_torch_binary_classifier,

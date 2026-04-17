@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import json
 import random
 from pathlib import Path
@@ -10,6 +11,32 @@ import pandas as pd
 
 from .metrics import build_prediction_frame, regression_metrics
 from .project_paths import model_output_dir
+
+
+def get_torch_device():
+    import torch
+
+    if torch.cuda.is_available():
+        torch.backends.cudnn.benchmark = True
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
+def resolve_torch_device(device: str = "auto"):
+    import torch
+
+    normalized = device.lower()
+    if normalized not in {"auto", "cpu", "cuda"}:
+        raise ValueError("device must be one of: auto, cpu, cuda")
+
+    if normalized == "cpu":
+        return torch.device("cpu")
+    if normalized == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA was requested but is not available in this environment.")
+        torch.backends.cudnn.benchmark = True
+        return torch.device("cuda")
+    return get_torch_device()
 
 
 def set_global_seed(seed: int) -> None:
@@ -88,11 +115,14 @@ def train_torch_regressor(
     batch_size: int = 64,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
+    patience: int = 20,
+    device: str = "auto",
 ):
     import torch
     from torch.utils.data import DataLoader, TensorDataset
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    resolved_device = resolve_torch_device(device)
+    pin_memory = resolved_device.type == "cuda"
     loss_fn = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
@@ -100,25 +130,35 @@ def train_torch_regressor(
         torch.tensor(train_features, dtype=torch.float32),
         torch.tensor(train_targets, dtype=torch.float32).view(-1, 1),
     )
-    val_features_tensor = torch.tensor(val_features, dtype=torch.float32).to(device)
-    val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32).view(-1, 1).to(device)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_features_tensor = torch.tensor(val_features, dtype=torch.float32).to(resolved_device)
+    val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32).view(-1, 1).to(resolved_device)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
 
-    model = model.to(device)
+    model = model.to(resolved_device)
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
+    epochs_without_improvement = 0
     history: list[dict[str, float]] = []
+    train_target_mean = float(np.mean(train_targets))
+    train_target_std = float(np.std(train_targets))
+    if train_target_std < 1e-6:
+        train_target_std = 1.0
+
+    model.target_mean = train_target_mean
+    model.target_std = train_target_std
+    model.device_type = resolved_device.type
 
     for epoch in range(1, epochs + 1):
         model.train()
         running_loss = 0.0
         for batch_features, batch_targets in train_loader:
-            batch_features = batch_features.to(device)
-            batch_targets = batch_targets.to(device)
+            batch_features = batch_features.to(resolved_device, non_blocking=pin_memory)
+            batch_targets = batch_targets.to(resolved_device, non_blocking=pin_memory)
 
             optimizer.zero_grad()
             predictions = model(batch_features)
-            loss = loss_fn(predictions, batch_targets)
+            normalized_targets = (batch_targets - train_target_mean) / train_target_std
+            loss = loss_fn(predictions, normalized_targets)
             loss.backward()
             optimizer.step()
 
@@ -129,11 +169,15 @@ def train_torch_regressor(
         model.eval()
         with torch.no_grad():
             val_predictions = model(val_features_tensor)
-            val_loss = float(loss_fn(val_predictions, val_targets_tensor).item())
+            normalized_val_targets = (val_targets_tensor - train_target_mean) / train_target_std
+            val_loss = float(loss_fn(val_predictions, normalized_val_targets).item())
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_state = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
 
         history.append(
             {
@@ -143,6 +187,9 @@ def train_torch_regressor(
             }
         )
 
+        if epochs_without_improvement >= patience:
+            break
+
     model.load_state_dict(best_state)
     return model.cpu(), history
 
@@ -150,10 +197,15 @@ def train_torch_regressor(
 def predict_torch_regressor(model, features: np.ndarray) -> np.ndarray:
     import torch
 
+    resolved_device = resolve_torch_device(getattr(model, "device_type", "auto"))
+    target_mean = float(getattr(model, "target_mean", 0.0))
+    target_std = float(getattr(model, "target_std", 1.0))
+    model = model.to(resolved_device)
     model.eval()
     with torch.no_grad():
-        predictions = model(torch.tensor(features, dtype=torch.float32))
-    return predictions.view(-1).cpu().numpy()
+        predictions = model(torch.tensor(features, dtype=torch.float32, device=resolved_device))
+    predictions = predictions.view(-1).cpu().numpy() * target_std + target_mean
+    return predictions
 
 
 def train_graph_regressor(
@@ -164,30 +216,60 @@ def train_graph_regressor(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
+    patience: int = 25,
+    device: str = "auto",
 ):
     import torch
     from torch_geometric.loader import DataLoader
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    resolved_device = resolve_torch_device(device)
+    pin_memory = resolved_device.type == "cuda"
     loss_fn = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory)
+    forward_signature = inspect.signature(model.forward)
+    supports_edge_attr = "edge_attr" in forward_signature.parameters
+    supports_global_features = "global_features" in forward_signature.parameters
 
-    model = model.to(device)
+    model = model.to(resolved_device)
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
+    epochs_without_improvement = 0
     history: list[dict[str, float]] = []
+    train_targets = np.asarray([float(graph.y.view(-1)[0].item()) for graph in train_dataset], dtype=np.float32)
+    target_mean = float(train_targets.mean())
+    target_std = float(train_targets.std())
+    if target_std < 1e-6:
+        target_std = 1.0
+
+    model.target_mean = target_mean
+    model.target_std = target_std
+    model.device_type = resolved_device.type
 
     for epoch in range(1, epochs + 1):
         model.train()
         total_train_loss = 0.0
         total_train_graphs = 0
         for batch in train_loader:
-            batch = batch.to(device)
+            batch = batch.to(resolved_device)
             optimizer.zero_grad()
-            predictions = model(batch.x, batch.edge_index, batch.batch)
-            loss = loss_fn(predictions, batch.y.view(-1, 1))
+            global_features = None
+            if supports_global_features and hasattr(batch, "global_features"):
+                global_features = batch.global_features
+                if global_features.dim() == 1:
+                    global_features = global_features.view(batch.num_graphs, -1)
+
+            if supports_edge_attr and supports_global_features and hasattr(batch, "edge_attr") and global_features is not None:
+                predictions = model(batch.x, batch.edge_index, batch.batch, batch.edge_attr, global_features)
+            elif supports_edge_attr and hasattr(batch, "edge_attr"):
+                predictions = model(batch.x, batch.edge_index, batch.batch, batch.edge_attr)
+            elif supports_global_features and global_features is not None:
+                predictions = model(batch.x, batch.edge_index, batch.batch, global_features)
+            else:
+                predictions = model(batch.x, batch.edge_index, batch.batch)
+            normalized_targets = (batch.y.view(-1, 1) - target_mean) / target_std
+            loss = loss_fn(predictions, normalized_targets)
             loss.backward()
             optimizer.step()
 
@@ -201,9 +283,23 @@ def train_graph_regressor(
         total_val_graphs = 0
         with torch.no_grad():
             for batch in val_loader:
-                batch = batch.to(device)
-                predictions = model(batch.x, batch.edge_index, batch.batch)
-                loss = loss_fn(predictions, batch.y.view(-1, 1))
+                batch = batch.to(resolved_device)
+                global_features = None
+                if supports_global_features and hasattr(batch, "global_features"):
+                    global_features = batch.global_features
+                    if global_features.dim() == 1:
+                        global_features = global_features.view(batch.num_graphs, -1)
+
+                if supports_edge_attr and supports_global_features and hasattr(batch, "edge_attr") and global_features is not None:
+                    predictions = model(batch.x, batch.edge_index, batch.batch, batch.edge_attr, global_features)
+                elif supports_edge_attr and hasattr(batch, "edge_attr"):
+                    predictions = model(batch.x, batch.edge_index, batch.batch, batch.edge_attr)
+                elif supports_global_features and global_features is not None:
+                    predictions = model(batch.x, batch.edge_index, batch.batch, global_features)
+                else:
+                    predictions = model(batch.x, batch.edge_index, batch.batch)
+                normalized_targets = (batch.y.view(-1, 1) - target_mean) / target_std
+                loss = loss_fn(predictions, normalized_targets)
                 total_val_loss += loss.item() * batch.num_graphs
                 total_val_graphs += batch.num_graphs
 
@@ -212,6 +308,9 @@ def train_graph_regressor(
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_state = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
 
         history.append(
             {
@@ -221,6 +320,9 @@ def train_graph_regressor(
             }
         )
 
+        if epochs_without_improvement >= patience:
+            break
+
     model.load_state_dict(best_state)
     return model.cpu(), history
 
@@ -229,14 +331,36 @@ def predict_graph_regressor(model, dataset, batch_size: int = 32) -> np.ndarray:
     import torch
     from torch_geometric.loader import DataLoader
 
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    resolved_device = resolve_torch_device(getattr(model, "device_type", "auto"))
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=resolved_device.type == "cuda")
     predictions: list[float] = []
+    target_mean = float(getattr(model, "target_mean", 0.0))
+    target_std = float(getattr(model, "target_std", 1.0))
+    forward_signature = inspect.signature(model.forward)
+    supports_edge_attr = "edge_attr" in forward_signature.parameters
+    supports_global_features = "global_features" in forward_signature.parameters
 
+    model = model.to(resolved_device)
     model.eval()
     with torch.no_grad():
         for batch in loader:
-            output = model(batch.x, batch.edge_index, batch.batch)
-            predictions.extend(output.view(-1).cpu().numpy().tolist())
+            batch = batch.to(resolved_device)
+            global_features = None
+            if supports_global_features and hasattr(batch, "global_features"):
+                global_features = batch.global_features
+                if global_features.dim() == 1:
+                    global_features = global_features.view(batch.num_graphs, -1)
+
+            if supports_edge_attr and supports_global_features and hasattr(batch, "edge_attr") and global_features is not None:
+                output = model(batch.x, batch.edge_index, batch.batch, batch.edge_attr, global_features)
+            elif supports_edge_attr and hasattr(batch, "edge_attr"):
+                output = model(batch.x, batch.edge_index, batch.batch, batch.edge_attr)
+            elif supports_global_features and global_features is not None:
+                output = model(batch.x, batch.edge_index, batch.batch, global_features)
+            else:
+                output = model(batch.x, batch.edge_index, batch.batch)
+            output = output.view(-1).cpu().numpy() * target_std + target_mean
+            predictions.extend(output.tolist())
     return np.asarray(predictions, dtype=np.float32)
 
 

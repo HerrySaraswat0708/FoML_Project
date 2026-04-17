@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ClassicalModels import build_mlp_regressor
+from DNN import build_mlp_regressor
 from utils.data_utils import build_classical_feature_matrix, load_dataset, split_classical_data
 from utils.training_utils import save_sklearn_run, set_global_seed
 
@@ -42,8 +42,8 @@ def train_and_evaluate(
     y_pred = model.predict(X_test)
 
     _, metrics = save_sklearn_run(
-        family="classical",
-        model_name="mlp_regressor",
+        family="dnn",
+        model_name="sklearn_mlp_regressor",
         model=model,
         test_frame=frame_test,
         y_test=y_test,

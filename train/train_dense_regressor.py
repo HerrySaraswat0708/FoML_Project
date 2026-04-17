@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from DNN import DenseRegressor
 from utils.data_utils import build_classical_feature_matrix, load_dataset, split_classical_data
 from utils.training_utils import (
+    get_torch_device,
     predict_torch_regressor,
     save_json,
     save_torch_run,
@@ -34,8 +35,10 @@ def train_and_evaluate(
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
     feature_mode: str = "combined",
+    device: str = "auto",
 ) -> dict[str, float]:
     set_global_seed(random_state)
+    torch_device = get_torch_device() if device == "auto" else None
     frame = load_dataset()
     X, y, clean_frame, feature_names = build_classical_feature_matrix(frame, feature_mode=feature_mode)
     X_train, X_test, y_train, y_test, frame_train, frame_test = split_classical_data(
@@ -74,6 +77,8 @@ def train_and_evaluate(
         batch_size=batch_size,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
+        patience=20,
+        device=device,
     )
     y_pred = predict_torch_regressor(model, X_test_scaled)
 
@@ -94,6 +99,7 @@ def train_and_evaluate(
             "batch_size": batch_size,
             "learning_rate": learning_rate,
             "weight_decay": weight_decay,
+            "device": getattr(model, "device_type", torch_device.type if torch_device is not None else device),
             "train_rows": len(frame_train),
             "test_rows": len(frame_test),
         },
@@ -120,6 +126,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-5)
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument(
         "--feature-mode",
         choices=["fingerprint", "descriptor", "combined"],
@@ -140,6 +147,7 @@ def main() -> None:
         learning_rate=args.learning_rate,
         weight_decay=args.weight_decay,
         feature_mode=args.feature_mode,
+        device=args.device,
     )
     print(json.dumps(metrics, indent=2))
 

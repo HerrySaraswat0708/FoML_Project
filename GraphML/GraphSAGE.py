@@ -1,26 +1,46 @@
+from __future__ import annotations
+
 import torch
-from torch.nn import Linear
-from torch_geometric.nn import MessagePassing
-from torch_geometric.nn import global_mean_pool
+import torch.nn.functional as F
+from torch import nn
+from torch_geometric.nn import SAGEConv, global_mean_pool
 
-class GraphSAGE(MessagePassing):
-    def __init__(self, in_channels, out_channels):
-        super().__init__(aggr='mean')  # mean aggregation
-        self.lin = Linear(in_channels * 2, out_channels)
-        self.linf = Linear(out_channels,1)
 
-    def forward(self, x, edge_index, batch):
-        # Step 1: aggregate neighbor messages
-        out = self.propagate(edge_index, x=x)
+class GraphSAGE(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        global_dim: int = 0,
+        dropout: float = 0.15,
+    ) -> None:
+        super().__init__()
+        hidden_channels = out_channels
+        readout_input_dim = hidden_channels + global_dim
+        self.conv1 = SAGEConv(in_channels, hidden_channels)
+        self.conv2 = SAGEConv(hidden_channels, hidden_channels)
+        self.norm1 = nn.BatchNorm1d(hidden_channels)
+        self.norm2 = nn.BatchNorm1d(hidden_channels)
+        self.dropout = float(dropout)
+        self.readout = nn.Sequential(
+            nn.Linear(readout_input_dim, hidden_channels // 2),
+            nn.ReLU(),
+            nn.Dropout(p=self.dropout),
+            nn.Linear(hidden_channels // 2, 1),
+        )
 
-        # Step 2: concatenate self node features
-        out = torch.cat([x, out], dim=1)
-        out = global_mean_pool(out,batch)
-        # Step 3: linear transformation
-        out = self.lin(out)
-        out = self.linf(out)
-        return out
+    def forward(self, x, edge_index, batch, global_features=None):
+        x = self.conv1(x, edge_index)
+        x = self.norm1(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
 
-    def message(self, x_j):
-        # Just pass neighbor features
-        return x_j
+        x = self.conv2(x, edge_index)
+        x = self.norm2(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+        x = global_mean_pool(x, batch)
+        if global_features is not None:
+            x = torch.cat([x, global_features], dim=1)
+        return self.readout(x)

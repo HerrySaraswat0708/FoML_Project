@@ -47,13 +47,13 @@ Classical baselines:
 ```powershell
 python train\train_linear_regression.py
 python train\train_gaussian_process.py
-python train\train_mlp_regressor.py
 ```
 
 Deep neural network:
 
 ```powershell
 python train\train_dense_regressor.py
+python train\train_mlp_regressor.py
 ```
 
 Graph models:
@@ -103,10 +103,13 @@ Training scripts save outputs in this pattern:
 outputs/
 |-- classical/
 |   |-- linear_regression/
+|   |-- ridge_regression/
+|   |-- lasso_regression/
+|   |-- elastic_net_regression/
 |   |-- gaussian_process/
-|   |-- mlp_regressor/
 |-- dnn/
 |   |-- dense_regressor/
+|   |-- sklearn_mlp_regressor/
 |-- graphml/
 |   |-- graph_cn/
 |   |-- graph_net/
@@ -125,8 +128,8 @@ Each model folder stores:
 
 ## Notes
 
-- `LinearRegression`, `GaussianProcessRegressor`, and `MLPRegressor` are the main classical regression baselines.
-- `DenseRegressor` is the main tabular DNN regression baseline.
+- `LinearRegression`, `Ridge`, `Lasso`, `ElasticNet`, and `GaussianProcessRegressor` are the main classical regression baselines.
+- `DenseRegressor` and scikit-learn `MLPRegressor` live under `DNN/` as the tabular neural-network baselines.
 - `GraphCN`, `GraphNET`, `GraphSAGE`, and `GraphMP` are graph-level regression models in the main pipeline.
 - The ablation scripts convert the problem into binary classification for all families so you can compare tabular and graph methods on the same discrete target.
 - The project favors readability over packaging complexity so it is easier to explain in a course report or viva.
