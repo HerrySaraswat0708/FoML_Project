@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 from torch import nn
+<<<<<<< HEAD
 from torch_geometric.nn import SAGEConv, global_mean_pool
 
 
@@ -44,3 +45,4 @@ class GraphSAGE(nn.Module):
         if global_features is not None:
             x = torch.cat([x, global_features], dim=1)
         return self.readout(x)
+=======

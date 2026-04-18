@@ -254,6 +254,7 @@ def train_graph_regressor(
         for batch in train_loader:
             batch = batch.to(resolved_device)
             optimizer.zero_grad()
+<<<<<<< HEAD
             global_features = None
             if supports_global_features and hasattr(batch, "global_features"):
                 global_features = batch.global_features
@@ -270,6 +271,10 @@ def train_graph_regressor(
                 predictions = model(batch.x, batch.edge_index, batch.batch)
             normalized_targets = (batch.y.view(-1, 1) - target_mean) / target_std
             loss = loss_fn(predictions, normalized_targets)
+=======
+            predictions = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
+            loss = loss_fn(predictions, batch.y.view(-1, 1))
+>>>>>>> Requesting you to please make the report and add it as soon as possible thanks, gym @ 5
             loss.backward()
             optimizer.step()
 
@@ -283,6 +288,7 @@ def train_graph_regressor(
         total_val_graphs = 0
         with torch.no_grad():
             for batch in val_loader:
+<<<<<<< HEAD
                 batch = batch.to(resolved_device)
                 global_features = None
                 if supports_global_features and hasattr(batch, "global_features"):
@@ -300,6 +306,11 @@ def train_graph_regressor(
                     predictions = model(batch.x, batch.edge_index, batch.batch)
                 normalized_targets = (batch.y.view(-1, 1) - target_mean) / target_std
                 loss = loss_fn(predictions, normalized_targets)
+=======
+                batch = batch.to(device)
+                predictions = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
+                loss = loss_fn(predictions, batch.y.view(-1, 1))
+>>>>>>> Requesting you to please make the report and add it as soon as possible thanks, gym @ 5
                 total_val_loss += loss.item() * batch.num_graphs
                 total_val_graphs += batch.num_graphs
 
@@ -344,6 +355,7 @@ def predict_graph_regressor(model, dataset, batch_size: int = 32) -> np.ndarray:
     model.eval()
     with torch.no_grad():
         for batch in loader:
+<<<<<<< HEAD
             batch = batch.to(resolved_device)
             global_features = None
             if supports_global_features and hasattr(batch, "global_features"):
@@ -361,6 +373,10 @@ def predict_graph_regressor(model, dataset, batch_size: int = 32) -> np.ndarray:
                 output = model(batch.x, batch.edge_index, batch.batch)
             output = output.view(-1).cpu().numpy() * target_std + target_mean
             predictions.extend(output.tolist())
+=======
+            output = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
+            predictions.extend(output.view(-1).cpu().numpy().tolist())
+>>>>>>> Requesting you to please make the report and add it as soon as possible thanks, gym @ 5
     return np.asarray(predictions, dtype=np.float32)
 
 
@@ -474,7 +490,7 @@ def train_graph_binary_classifier(
         for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
-            logits = model(batch.x, batch.edge_index, batch.batch)
+            logits = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
             loss = loss_fn(logits, batch.y.view(-1, 1))
             loss.backward()
             optimizer.step()
@@ -490,7 +506,7 @@ def train_graph_binary_classifier(
         with torch.no_grad():
             for batch in val_loader:
                 batch = batch.to(device)
-                logits = model(batch.x, batch.edge_index, batch.batch)
+                logits = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
                 loss = loss_fn(logits, batch.y.view(-1, 1))
                 total_val_loss += loss.item() * batch.num_graphs
                 total_val_graphs += batch.num_graphs
@@ -523,7 +539,7 @@ def predict_graph_binary_classifier(model, dataset, batch_size: int = 32) -> tup
     model.eval()
     with torch.no_grad():
         for batch in loader:
-            logits = model(batch.x, batch.edge_index, batch.batch)
+            logits = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
             probabilities.extend(torch.sigmoid(logits).view(-1).cpu().numpy().tolist())
 
     scores = np.asarray(probabilities, dtype=np.float32)

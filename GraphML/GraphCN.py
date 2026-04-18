@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from __future__ import annotations
 
 import torch
@@ -44,3 +45,4 @@ class GraphCN(nn.Module):
         if global_features is not None:
             x = torch.cat([x, global_features], dim=1)
         return self.readout(x)
+=======
