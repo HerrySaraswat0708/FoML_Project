@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path
+from typing import Dict, List
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -12,17 +11,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from projects.FoML_Project.ClassicalModels import build_gaussian_process_classifier, build_logistic_regression
-from projects.FoML_Project.DNN import DenseClassifier, build_mlp_classifier
-from projects.FoML_Project.utils.data_utils import (
+from ClassicalModels import build_gaussian_process_classifier, build_logistic_regression
+from DNN import DenseClassifier, build_mlp_classifier
+from utils.data_utils import (
     build_classical_feature_matrix,
     load_dataset,
     make_binary_labels,
     split_classical_data,
 )
-from projects.FoML_Project.utils.metrics import classification_metrics
-from projects.FoML_Project.utils.project_paths import study_output_dir
-from projects.FoML_Project.utils.training_utils import (
+from utils.metrics import classification_metrics
+from utils.project_paths import study_output_dir
+from utils.training_utils import (
+    get_torch_device,
     predict_torch_binary_classifier,
     set_global_seed,
     train_torch_binary_classifier,
@@ -40,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-5)
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     return parser.parse_args()
 
 
@@ -47,9 +48,10 @@ def main() -> None:
     args = parse_args()
     output_dir = study_output_dir("ablation")
     set_global_seed(args.random_state)
+    torch_device = get_torch_device() if args.device == "auto" else None
     frame = load_dataset()
 
-    rows: list[dict[str, object]] = []
+    rows = []  # type: List[Dict[str, object]]
     positive_label = f"Solubility >= {args.threshold}"
 
     for feature_mode in ("fingerprint", "descriptor", "combined"):
@@ -86,6 +88,7 @@ def main() -> None:
                     "model_name": model_name,
                     "num_features": len(feature_names),
                     "positive_rate": float(y_binary.mean()),
+                    "device": "cpu",
                     **metrics,
                 }
             )
@@ -114,6 +117,7 @@ def main() -> None:
             batch_size=args.batch_size,
             learning_rate=args.learning_rate,
             weight_decay=args.weight_decay,
+            device=args.device,
         )
         y_pred, y_score = predict_torch_binary_classifier(dense_model, X_test_scaled)
         metrics = classification_metrics(y_test, y_pred, y_score)
@@ -125,6 +129,7 @@ def main() -> None:
                 "model_name": "dense_classifier",
                 "num_features": len(feature_names),
                 "positive_rate": float(y_binary.mean()),
+                "device": getattr(dense_model, "device_type", torch_device.type if torch_device is not None else args.device),
                 **metrics,
             }
         )

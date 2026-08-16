@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from sklearn.gaussian_process import GaussianProcessClassifier, GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern, RBF, RationalQuadratic
 from sklearn.pipeline import Pipeline

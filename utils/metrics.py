@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -9,17 +8,17 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     mean_absolute_error,
+    mean_squared_error,
     precision_score,
     r2_score,
     recall_score,
     roc_auc_score,
-    root_mean_squared_error,
 )
 
 
-def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     return {
-        "rmse": float(root_mean_squared_error(y_true, y_pred)),
+        "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
         "mae": float(mean_absolute_error(y_true, y_pred)),
         "r2": float(r2_score(y_true, y_pred)),
     }
@@ -28,8 +27,8 @@ def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, floa
 def classification_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    y_score: np.ndarray | None = None,
-) -> dict[str, float]:
+    y_score: Optional[np.ndarray] = None,
+) -> Dict[str, float]:
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "precision": float(precision_score(y_true, y_pred, zero_division=0)),
@@ -55,5 +54,5 @@ def build_prediction_frame(
     return report
 
 
-def save_metrics(path: Path, metrics: dict[str, object]) -> None:
+def save_metrics(path: Path, metrics: Dict[str, object]) -> None:
     path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")

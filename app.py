@@ -1,23 +1,19 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
+from typing import Dict, List
 
 import pandas as pd
 import streamlit as st
 
-from projects.FoML_Project.utils.data_utils import load_dataset
-from projects.FoML_Project.utils.project_paths import OUTPUTS_DIR
+from utils.data_utils import load_dataset
+from utils.project_paths import OUTPUTS_DIR
 
-
-@st.cache_data
 def load_reference_dataset() -> pd.DataFrame:
     return load_dataset()
 
 
-@st.cache_data
 def load_metrics_table() -> pd.DataFrame:
-    rows: list[dict[str, object]] = []
+    rows = []  # type: List[Dict[str, object]]
     for metrics_path in OUTPUTS_DIR.glob("*/*/metrics.json"):
         payload = json.loads(metrics_path.read_text(encoding="utf-8"))
         rows.append(
@@ -34,7 +30,7 @@ def load_metrics_table() -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values(by="rmse", ascending=True)
 
 
-def available_csv_files() -> list[Path]:
+def available_csv_files() -> List[Path]:
     return sorted(OUTPUTS_DIR.rglob("*.csv"))
 
 
@@ -52,18 +48,18 @@ summary_col1.metric("Dataset Rows", f"{len(dataset):,}")
 summary_col2.metric("Tracked Output Tables", len(csv_files))
 summary_col3.metric("Completed Model Runs", len(metrics_table))
 
-tab_dataset, tab_results, tab_studies = st.tabs(["Dataset", "Model Results", "Studies"])
 
-with tab_dataset:
+def render_dataset_section() -> None:
     st.subheader("Reference Dataset")
-    st.dataframe(dataset[["Name", "SMILES", "Solubility"]], use_container_width=True, height=420)
+    st.dataframe(dataset[["Name", "SMILES", "Solubility"]], height=420)
 
-with tab_results:
+
+def render_results_section() -> None:
     st.subheader("Experiment Leaderboard")
     if metrics_table.empty:
         st.info("Run any script from the `train/` folder to populate model results.")
     else:
-        st.dataframe(metrics_table, use_container_width=True, hide_index=True)
+        st.dataframe(metrics_table)
 
     prediction_files = [path for path in csv_files if path.name == "predictions.csv"]
     if prediction_files:
@@ -72,9 +68,10 @@ with tab_results:
             options=prediction_files,
             format_func=lambda path: f"{path.parent.parent.name}/{path.parent.name}",
         )
-        st.dataframe(pd.read_csv(selected_predictions), use_container_width=True, height=320)
+        st.dataframe(pd.read_csv(selected_predictions), height=320)
 
-with tab_studies:
+
+def render_studies_section() -> None:
     st.subheader("Tuning And Ablation Outputs")
     study_files = [path for path in csv_files if path.name != "predictions.csv"]
     if not study_files:
@@ -85,4 +82,22 @@ with tab_studies:
             options=study_files,
             format_func=lambda path: str(path.relative_to(OUTPUTS_DIR)),
         )
-        st.dataframe(pd.read_csv(selected_study), use_container_width=True, height=360)
+        st.dataframe(pd.read_csv(selected_study), height=360)
+
+
+if hasattr(st, "tabs"):
+    tab_dataset, tab_results, tab_studies = st.tabs(["Dataset", "Model Results", "Studies"])
+    with tab_dataset:
+        render_dataset_section()
+    with tab_results:
+        render_results_section()
+    with tab_studies:
+        render_studies_section()
+else:
+    section = st.selectbox("Section", ["Dataset", "Model Results", "Studies"])
+    if section == "Dataset":
+        render_dataset_section()
+    elif section == "Model Results":
+        render_results_section()
+    else:
+        render_studies_section()

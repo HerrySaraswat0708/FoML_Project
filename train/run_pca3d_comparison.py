@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path
+from typing import Dict, List
 
 import pandas as pd
 
@@ -19,8 +18,8 @@ from utils.project_paths import PCA3D_DATASET_PATH, study_output_dir
 from utils.training_utils import save_json, set_global_seed
 
 
-def build_comparison_rows(summary: dict[str, dict[str, float]]) -> list[dict[str, object]]:
-    rows: list[dict[str, object]] = []
+def build_comparison_rows(summary: Dict[str, Dict[str, Dict[str, float]]]) -> List[Dict[str, object]]:
+    rows = []  # type: List[Dict[str, object]]
     for model_name, result in summary.items():
         original = result["original"]
         pca3d = result["pca3d"]

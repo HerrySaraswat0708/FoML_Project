@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import os
-from collections.abc import Sequence
+from typing import Dict, List, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -14,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 
 from .project_paths import DATASET_PATH, FEATURE_MATRIX_PATH, GRAPH_DATASET_PATH, PCA3D_DATASET_PATH, TARGET_VECTOR_PATH
 
-DEFAULT_DESCRIPTOR_NAMES: tuple[str, ...] = (
+DEFAULT_DESCRIPTOR_NAMES = (
     "NumHDonors",
     "TPSA",
     "NumRotatableBonds",
@@ -29,7 +27,7 @@ DEFAULT_DESCRIPTOR_NAMES: tuple[str, ...] = (
     "MolLogP",
 )
 
-DESCRIPTOR_FUNCTIONS: dict[str, object] = {
+DESCRIPTOR_FUNCTIONS = {  # type: Dict[str, object]
     "MolWt": Descriptors.MolWt,
     "MolLogP": Descriptors.MolLogP,
     "MolMR": Descriptors.MolMR,
@@ -75,8 +73,8 @@ def load_dataset(dataset_path=DATASET_PATH) -> pd.DataFrame:
     frame["Solubility"] = pd.to_numeric(frame["Solubility"], errors="coerce")
     frame = frame.dropna(subset=["Solubility"]).reset_index(drop=True)
 
-    valid_rows: list[int] = []
-    canonical_smiles: list[str] = []
+    valid_rows = []  # type: List[int]
+    canonical_smiles = []  # type: List[str]
     for index, smiles in frame["SMILES"].astype(str).items():
         molecule = Chem.MolFromSmiles(smiles)
         if molecule is None:
@@ -119,11 +117,11 @@ def build_classical_feature_matrix(
     fingerprint_radius: int = 2,
     fingerprint_size: int = 1024,
     feature_mode: str = "combined",
-) -> tuple[np.ndarray, np.ndarray, pd.DataFrame, list[str]]:
-    rows: list[np.ndarray] = []
-    targets: list[float] = []
-    valid_indices: list[int] = []
-    feature_names: list[str] = []
+) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame, List[str]]:
+    rows = []  # type: List[np.ndarray]
+    targets = []  # type: List[float]
+    valid_indices = []  # type: List[int]
+    feature_names = []  # type: List[str]
 
     for index, row in frame.iterrows():
         molecule = Chem.MolFromSmiles(str(row["SMILES"]))
@@ -173,13 +171,13 @@ def fit_pca_projection(
     train_features: np.ndarray,
     *other_feature_sets: np.ndarray,
     n_components: int = 3,
-) -> tuple[np.ndarray, ...]:
+) -> Tuple[np.ndarray, ...]:
     scaler = StandardScaler()
     train_scaled = scaler.fit_transform(train_features)
     pca = PCA(n_components=n_components, random_state=42)
     train_projected = pca.fit_transform(train_scaled).astype(np.float32)
 
-    transformed_sets: list[np.ndarray] = [train_projected]
+    transformed_sets = [train_projected]  # type: List[np.ndarray]
     for feature_set in other_feature_sets:
         projected = pca.transform(scaler.transform(feature_set)).astype(np.float32)
         transformed_sets.append(projected)
@@ -225,7 +223,7 @@ def save_pca3d_dataset(
     return dataset
 
 
-def atom_feature_vector(atom: Chem.Atom, feature_variant: str = "full") -> list[float]:
+def atom_feature_vector(atom: Chem.Atom, feature_variant: str = "full") -> List[float]:
     if feature_variant == "atomic_number":
         return [float(atom.GetAtomicNum())]
     if feature_variant == "atomic_number_degree":
@@ -248,6 +246,23 @@ def atom_feature_vector(atom: Chem.Atom, feature_variant: str = "full") -> list[
     raise ValueError("feature_variant must be atomic_number, atomic_number_degree, or full")
 
 
+def bond_feature_vector(bond: Chem.Bond) -> List[float]:
+    bond_type = bond.GetBondType()
+    stereo = bond.GetStereo()
+    return [
+        float(bond.GetBondTypeAsDouble()),
+        float(int(bond_type == Chem.rdchem.BondType.SINGLE)),
+        float(int(bond_type == Chem.rdchem.BondType.DOUBLE)),
+        float(int(bond_type == Chem.rdchem.BondType.TRIPLE)),
+        float(int(bond_type == Chem.rdchem.BondType.AROMATIC)),
+        float(int(bond.GetIsConjugated())),
+        float(int(bond.IsInRing())),
+        float(int(stereo in {Chem.rdchem.BondStereo.STEREOZ, Chem.rdchem.BondStereo.STEREOCIS})),
+        float(int(stereo in {Chem.rdchem.BondStereo.STEREOE, Chem.rdchem.BondStereo.STEREOTRANS})),
+        float(int(stereo == Chem.rdchem.BondStereo.STEREOANY)),
+    ]
+
+
 def build_graph_dataset(
     frame: pd.DataFrame,
     feature_variant: str = "full",
@@ -268,29 +283,21 @@ def build_graph_dataset(
             dtype=torch.float,
         )
 
-        edge_pairs: list[list[int]] = []
-        edge_weights: list[list[float]] = []
+        edge_pairs = []  # type: List[List[int]]
+        edge_features = []  # type: List[List[float]]
         for bond in molecule.GetBonds():
             begin = bond.GetBeginAtomIdx()
             end = bond.GetEndAtomIdx()
             edge_pairs.extend([[begin, end], [end, begin]])
-
-            if bond.GetBondType().name == "SINGLE":
-                weight = 1.0
-            elif bond.GetBondType().name == "DOUBLE":
-                weight = 2.0
-            elif bond.GetBondType().name == "TRIPLE":
-                weight = 3.0
-            else:
-                weight = 1.5
-            edge_weights.extend([[weight], [weight]])
+            bond_features = bond_feature_vector(bond)
+            edge_features.extend([bond_features, bond_features])
 
         if edge_pairs:
             edge_index = torch.tensor(edge_pairs, dtype=torch.long).t().contiguous()
-            edge_attr = torch.tensor(edge_weights, dtype=torch.float)
+            edge_attr = torch.tensor(edge_features, dtype=torch.float)
         else:
             edge_index = torch.empty((2, 0), dtype=torch.long)
-            edge_attr = torch.empty((0, 1), dtype=torch.float)
+            edge_attr = torch.empty((0, 10), dtype=torch.float)
 
         graph = Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
         graph.y = torch.tensor([float(row["Solubility"])], dtype=torch.float)
@@ -318,7 +325,7 @@ def split_classical_data(
     frame: pd.DataFrame,
     test_size: float = 0.2,
     random_state: int = 42,
-    stratify: np.ndarray | None = None,
+    stratify=None,
 ):
     return train_test_split(
         X,
@@ -331,8 +338,5 @@ def split_classical_data(
     )
 
 
-def make_binary_labels(
-    values: np.ndarray | pd.Series,
-    threshold: float = -3.0,
-) -> np.ndarray:
+def make_binary_labels(values, threshold: float = -3.0) -> np.ndarray:
     return (np.asarray(values, dtype=float) >= threshold).astype(np.int64)

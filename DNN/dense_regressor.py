@@ -1,19 +1,18 @@
-from __future__ import annotations
-
 import torch
 from torch import nn
+from typing import List, Tuple
 
 
 class DenseRegressor(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        hidden_dims: tuple[int, ...] = (256, 128, 64),
+        hidden_dims: Tuple[int, ...] = (256, 128, 64),
         dropout: float = 0.15,
     ) -> None:
         super().__init__()
 
-        layers: list[nn.Module] = []
+        layers = []  # type: List[nn.Module]
         current_dim = input_dim
         for hidden_dim in hidden_dims:
             layers.extend(
@@ -30,4 +29,3 @@ class DenseRegressor(nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         return self.network(inputs)
-

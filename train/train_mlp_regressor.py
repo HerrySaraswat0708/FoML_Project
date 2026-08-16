@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Dict, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -17,11 +16,11 @@ from utils.training_utils import save_sklearn_run, set_global_seed
 def train_and_evaluate(
     test_size: float = 0.2,
     random_state: int = 42,
-    hidden_layers: tuple[int, ...] = (256, 128, 64),
+    hidden_layers: Tuple[int, ...] = (256, 128, 64),
     alpha: float = 1e-4,
     learning_rate_init: float = 1e-3,
     feature_mode: str = "combined",
-) -> dict[str, float]:
+) -> Dict[str, float]:
     set_global_seed(random_state)
     frame = load_dataset()
     source_feature_mode = "combined" if feature_mode == "pca3d" else feature_mode

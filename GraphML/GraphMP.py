@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -12,12 +10,13 @@ class GraphMP(nn.Module):
         in_channels: int,
         out_channels: int,
         global_dim: int = 0,
-        edge_dim: int = 1,
+        edge_dim: int = 10,
         dropout: float = 0.15,
     ) -> None:
         super().__init__()
         hidden_channels = out_channels
         readout_input_dim = hidden_channels + global_dim
+        self.edge_dim = int(edge_dim)
         edge_network1 = nn.Sequential(
             nn.Linear(edge_dim, hidden_channels),
             nn.ReLU(),
@@ -42,7 +41,7 @@ class GraphMP(nn.Module):
 
     def forward(self, x, edge_index, batch, edge_attr=None, global_features=None):
         if edge_attr is None:
-            edge_attr = x.new_ones((edge_index.size(1), 1))
+            edge_attr = x.new_zeros((edge_index.size(1), self.edge_dim))
 
         x = self.conv1(x, edge_index, edge_attr)
         x = self.norm1(x)

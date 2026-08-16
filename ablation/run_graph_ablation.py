@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path
+from typing import Dict, List
 
 import pandas as pd
 import torch
@@ -17,6 +16,7 @@ from utils.data_utils import build_graph_dataset, load_dataset, make_binary_labe
 from utils.metrics import classification_metrics
 from utils.project_paths import study_output_dir
 from utils.training_utils import (
+    get_torch_device,
     predict_graph_binary_classifier,
     set_global_seed,
     train_graph_binary_classifier,
@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-5)
+    parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     return parser.parse_args()
 
 
@@ -41,6 +42,7 @@ def main() -> None:
     args = parse_args()
     output_dir = study_output_dir("ablation")
     set_global_seed(args.random_state)
+    torch_device = get_torch_device() if args.device == "auto" else None
     frame = load_dataset()
     y_binary = make_binary_labels(frame["Solubility"], threshold=args.threshold)
     positive_label = f"Solubility >= {args.threshold}"
@@ -52,7 +54,7 @@ def main() -> None:
         "graph_mp": GraphMP,
     }
 
-    rows: list[dict[str, object]] = []
+    rows = []  # type: List[Dict[str, object]]
     for feature_variant in ("atomic_number", "atomic_number_degree", "full"):
         dataset = build_graph_dataset(frame, feature_variant=feature_variant)
         for graph, label in zip(dataset, y_binary):
@@ -86,6 +88,7 @@ def main() -> None:
                 batch_size=args.batch_size,
                 learning_rate=args.learning_rate,
                 weight_decay=args.weight_decay,
+                device=args.device,
             )
             y_pred, y_score = predict_graph_binary_classifier(model, test_dataset, batch_size=args.batch_size)
             metrics = classification_metrics(y_test, y_pred, y_score)
@@ -97,6 +100,7 @@ def main() -> None:
                     "model_name": model_name,
                     "node_feature_dim": int(dataset[0].x.shape[1]),
                     "positive_rate": float(y_binary.mean()),
+                    "device": getattr(model, "device_type", torch_device.type if torch_device is not None else args.device),
                     **metrics,
                 }
             )

@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path
+from typing import Dict
 
 import pandas as pd
 from sklearn.gaussian_process.kernels import Matern, RBF, RationalQuadratic
@@ -25,7 +24,7 @@ from utils.project_paths import study_output_dir
 from utils.training_utils import save_json, set_global_seed
 
 
-def evaluate_search(search, X_train, y_train, X_test, y_test) -> dict[str, object]:
+def evaluate_search(search, X_train, y_train, X_test, y_test) -> Dict[str, object]:
     search.fit(X_train, y_train)
     y_pred = search.best_estimator_.predict(X_test)
     metrics = regression_metrics(y_test, y_pred)
@@ -36,7 +35,7 @@ def evaluate_search(search, X_train, y_train, X_test, y_test) -> dict[str, objec
     }
 
 
-def serialize_gpr_kernel(kernel) -> dict[str, object]:
+def serialize_gpr_kernel(kernel) -> Dict[str, object]:
     if isinstance(kernel, RBF):
         return {
             "kernel_name": "rbf",
@@ -67,8 +66,8 @@ def main() -> None:
         for mode in ("descriptor", "combined")
     }
 
-    rows: list[dict[str, object]] = []
-    best_configs: dict[str, dict[str, object]] = {}
+    rows = []
+    best_configs = {}  # type: Dict[str, Dict[str, object]]
 
     linear_searches = {
         "linear_regression": GridSearchCV(

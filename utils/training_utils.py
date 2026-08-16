@@ -1,10 +1,9 @@
-from __future__ import annotations
-
 import copy
 import inspect
 import json
 import random
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -53,7 +52,7 @@ def set_global_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def save_json(path: Path, payload: dict[str, object]) -> None:
+def save_json(path: Path, payload: Dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
@@ -64,7 +63,7 @@ def save_sklearn_run(
     test_frame: pd.DataFrame,
     y_test: np.ndarray,
     y_pred: np.ndarray,
-    extra_metadata: dict[str, object] | None = None,
+    extra_metadata: Optional[Dict[str, object]] = None,
 ):
     import joblib
 
@@ -83,12 +82,12 @@ def save_sklearn_run(
 def save_torch_run(
     family: str,
     model_name: str,
-    state_dict: dict[str, object],
-    history: list[dict[str, float]],
+    state_dict: Dict[str, object],
+    history: List[Dict[str, float]],
     test_frame: pd.DataFrame,
     y_test: np.ndarray,
     y_pred: np.ndarray,
-    extra_metadata: dict[str, object] | None = None,
+    extra_metadata: Optional[Dict[str, object]] = None,
 ):
     import torch
 
@@ -138,7 +137,7 @@ def train_torch_regressor(
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
     epochs_without_improvement = 0
-    history: list[dict[str, float]] = []
+    history = []  # type: List[Dict[str, float]]
     train_target_mean = float(np.mean(train_targets))
     train_target_std = float(np.std(train_targets))
     if train_target_std < 1e-6:
@@ -236,7 +235,7 @@ def train_graph_regressor(
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
     epochs_without_improvement = 0
-    history: list[dict[str, float]] = []
+    history = []  # type: List[Dict[str, float]]
     train_targets = np.asarray([float(graph.y.view(-1)[0].item()) for graph in train_dataset], dtype=np.float32)
     target_mean = float(train_targets.mean())
     target_std = float(train_targets.std())
@@ -333,7 +332,7 @@ def predict_graph_regressor(model, dataset, batch_size: int = 32) -> np.ndarray:
 
     resolved_device = resolve_torch_device(getattr(model, "device_type", "auto"))
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=resolved_device.type == "cuda")
-    predictions: list[float] = []
+    predictions = []  # type: List[float]
     target_mean = float(getattr(model, "target_mean", 0.0))
     target_std = float(getattr(model, "target_std", 1.0))
     forward_signature = inspect.signature(model.forward)
@@ -374,11 +373,13 @@ def train_torch_binary_classifier(
     batch_size: int = 64,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
+    device: str = "auto",
 ):
     import torch
     from torch.utils.data import DataLoader, TensorDataset
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    resolved_device = resolve_torch_device(device)
+    pin_memory = resolved_device.type == "cuda"
     loss_fn = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
@@ -386,21 +387,22 @@ def train_torch_binary_classifier(
         torch.tensor(train_features, dtype=torch.float32),
         torch.tensor(train_targets, dtype=torch.float32).view(-1, 1),
     )
-    val_features_tensor = torch.tensor(val_features, dtype=torch.float32).to(device)
-    val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32).view(-1, 1).to(device)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_features_tensor = torch.tensor(val_features, dtype=torch.float32).to(resolved_device)
+    val_targets_tensor = torch.tensor(val_targets, dtype=torch.float32).view(-1, 1).to(resolved_device)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
 
-    model = model.to(device)
+    model = model.to(resolved_device)
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
-    history: list[dict[str, float]] = []
+    history = []  # type: List[Dict[str, float]]
+    model.device_type = resolved_device.type
 
     for epoch in range(1, epochs + 1):
         model.train()
         running_loss = 0.0
         for batch_features, batch_targets in train_loader:
-            batch_features = batch_features.to(device)
-            batch_targets = batch_targets.to(device)
+            batch_features = batch_features.to(resolved_device, non_blocking=pin_memory)
+            batch_targets = batch_targets.to(resolved_device, non_blocking=pin_memory)
 
             optimizer.zero_grad()
             logits = model(batch_features)
@@ -433,12 +435,14 @@ def train_torch_binary_classifier(
     return model.cpu(), history
 
 
-def predict_torch_binary_classifier(model, features: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def predict_torch_binary_classifier(model, features: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     import torch
 
+    resolved_device = resolve_torch_device(getattr(model, "device_type", "auto"))
+    model = model.to(resolved_device)
     model.eval()
     with torch.no_grad():
-        logits = model(torch.tensor(features, dtype=torch.float32))
+        logits = model(torch.tensor(features, dtype=torch.float32, device=resolved_device))
         probabilities = torch.sigmoid(logits).view(-1).cpu().numpy()
     predictions = (probabilities >= 0.5).astype(np.int64)
     return predictions, probabilities
@@ -452,27 +456,30 @@ def train_graph_binary_classifier(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
+    device: str = "auto",
 ):
     import torch
     from torch_geometric.loader import DataLoader
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    resolved_device = resolve_torch_device(device)
+    pin_memory = resolved_device.type == "cuda"
     loss_fn = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory)
 
-    model = model.to(device)
+    model = model.to(resolved_device)
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
-    history: list[dict[str, float]] = []
+    history = []  # type: List[Dict[str, float]]
+    model.device_type = resolved_device.type
 
     for epoch in range(1, epochs + 1):
         model.train()
         total_train_loss = 0.0
         total_train_graphs = 0
         for batch in train_loader:
-            batch = batch.to(device)
+            batch = batch.to(resolved_device)
             optimizer.zero_grad()
             logits = model(batch.x, batch.edge_index, batch.batch)
             loss = loss_fn(logits, batch.y.view(-1, 1))
@@ -489,7 +496,7 @@ def train_graph_binary_classifier(
         total_val_graphs = 0
         with torch.no_grad():
             for batch in val_loader:
-                batch = batch.to(device)
+                batch = batch.to(resolved_device)
                 logits = model(batch.x, batch.edge_index, batch.batch)
                 loss = loss_fn(logits, batch.y.view(-1, 1))
                 total_val_loss += loss.item() * batch.num_graphs
@@ -513,16 +520,19 @@ def train_graph_binary_classifier(
     return model.cpu(), history
 
 
-def predict_graph_binary_classifier(model, dataset, batch_size: int = 32) -> tuple[np.ndarray, np.ndarray]:
+def predict_graph_binary_classifier(model, dataset, batch_size: int = 32) -> Tuple[np.ndarray, np.ndarray]:
     import torch
     from torch_geometric.loader import DataLoader
 
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-    probabilities: list[float] = []
+    resolved_device = resolve_torch_device(getattr(model, "device_type", "auto"))
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=resolved_device.type == "cuda")
+    probabilities = []  # type: List[float]
 
+    model = model.to(resolved_device)
     model.eval()
     with torch.no_grad():
         for batch in loader:
+            batch = batch.to(resolved_device)
             logits = model(batch.x, batch.edge_index, batch.batch)
             probabilities.extend(torch.sigmoid(logits).view(-1).cpu().numpy().tolist())
 

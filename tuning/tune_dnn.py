@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import joblib
 import pandas as pd
@@ -26,7 +25,7 @@ from utils.training_utils import (
 )
 
 
-def dense_search_space() -> list[dict[str, object]]:
+def dense_search_space():
     return [
         {"hidden_layers": (256, 128), "dropout": 0.10, "learning_rate": 1e-3, "weight_decay": 1e-5, "batch_size": 64},
         {"hidden_layers": (256, 128, 64), "dropout": 0.10, "learning_rate": 1e-3, "weight_decay": 1e-5, "batch_size": 64},
@@ -53,8 +52,8 @@ def main(device: str = "auto") -> None:
 
     configs = dense_search_space()
 
-    rows: list[dict[str, object]] = []
-    best_row: dict[str, object] | None = None
+    rows = []  # type: List[Dict[str, object]]
+    best_row = None  # type: Optional[Dict[str, object]]
 
     for config in configs:
         model = DenseRegressor(
@@ -95,14 +94,14 @@ def main(device: str = "auto") -> None:
             joblib.dump(scaler, output_dir / "best_dense_scaler.joblib")
             save_json(output_dir / "best_dense_config.json", row)
 
-    sklearn_mlp_rows: list[dict[str, object]] = []
+    sklearn_mlp_rows = []  # type: List[Dict[str, object]]
     sklearn_mlp_configs = [
         {"hidden_layer_sizes": (256, 128), "alpha": 1e-5, "learning_rate_init": 1e-3},
         {"hidden_layer_sizes": (256, 128, 64), "alpha": 1e-4, "learning_rate_init": 1e-3},
         {"hidden_layer_sizes": (384, 192, 96), "alpha": 1e-4, "learning_rate_init": 5e-4},
         {"hidden_layer_sizes": (512, 256, 128), "alpha": 1e-3, "learning_rate_init": 5e-4},
     ]
-    best_sklearn_mlp_row: dict[str, object] | None = None
+    best_sklearn_mlp_row = None  # type: Optional[Dict[str, object]]
 
     for config in sklearn_mlp_configs:
         model = build_mlp_regressor(

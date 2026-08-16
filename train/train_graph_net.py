@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Dict
 
 from sklearn.model_selection import train_test_split
 
@@ -20,12 +19,14 @@ def train_and_evaluate(
     test_size: float = 0.2,
     random_state: int = 42,
     hidden_channels: int = 64,
+    dropout: float = 0.15,
+    heads: int = 4,
     epochs: int = 120,
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
     device: str = "auto",
-) -> dict[str, float]:
+) -> Dict[str, float]:
     set_global_seed(random_state)
     torch_device = get_torch_device() if device == "auto" else None
     frame = load_dataset()
@@ -47,7 +48,15 @@ def train_and_evaluate(
 
     input_dim = dataset[0].x.shape[1]
     global_dim = int(dataset[0].global_features.shape[0]) if hasattr(dataset[0], "global_features") else 0
-    model = GraphNET(in_channels=input_dim, out_channels=hidden_channels, global_dim=global_dim)
+    edge_dim = int(dataset[0].edge_attr.shape[1]) if hasattr(dataset[0], "edge_attr") and dataset[0].edge_attr.numel() > 0 else 10
+    model = GraphNET(
+        in_channels=input_dim,
+        out_channels=hidden_channels,
+        global_dim=global_dim,
+        edge_dim=edge_dim,
+        dropout=dropout,
+        heads=heads,
+    )
     model, history = train_graph_regressor(
         model=model,
         train_dataset=fit_dataset,
@@ -72,6 +81,8 @@ def train_and_evaluate(
         y_pred=y_pred,
         extra_metadata={
             "hidden_channels": hidden_channels,
+            "dropout": dropout,
+            "heads": heads,
             "epochs": epochs,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
@@ -89,6 +100,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--hidden-channels", type=int, default=64)
+    parser.add_argument("--dropout", type=float, default=0.15)
+    parser.add_argument("--heads", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=120)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
@@ -103,6 +116,8 @@ def main() -> None:
         test_size=args.test_size,
         random_state=args.random_state,
         hidden_channels=args.hidden_channels,
+        dropout=args.dropout,
+        heads=args.heads,
         epochs=args.epochs,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,

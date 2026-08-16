@@ -1,7 +1,6 @@
-from __future__ import annotations
-
 import sys
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -17,7 +16,7 @@ from utils.project_paths import study_output_dir
 from utils.training_utils import get_torch_device, predict_graph_regressor, save_json, set_global_seed, train_graph_regressor
 
 
-def graph_search_space() -> list[dict[str, object]]:
+def graph_search_space():
     return [
         {"hidden_channels": 64, "dropout": 0.10, "learning_rate": 1e-3, "weight_decay": 1e-5, "batch_size": 32},
         {"hidden_channels": 64, "dropout": 0.15, "learning_rate": 7e-4, "weight_decay": 5e-5, "batch_size": 32},
@@ -44,12 +43,12 @@ def main(device: str = "auto") -> None:
     }
     search_space = graph_search_space()
 
-    rows: list[dict[str, object]] = []
+    rows = []  # type: List[Dict[str, object]]
     input_dim = dataset[0].x.shape[1]
     global_dim = int(dataset[0].global_features.shape[0]) if hasattr(dataset[0], "global_features") else 0
     edge_dim = int(dataset[0].edge_attr.shape[1]) if hasattr(dataset[0], "edge_attr") and dataset[0].edge_attr.numel() > 0 else 1
     y_test = frame_test["Solubility"].to_numpy(dtype=float)
-    best_row: dict[str, object] | None = None
+    best_row = None  # type: Optional[Dict[str, object]]
 
     for model_name, model_builder in model_builders.items():
         for config in search_space:

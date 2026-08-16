@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Dict, Tuple
 
 import joblib
 from sklearn.model_selection import train_test_split
@@ -28,7 +27,7 @@ from utils.training_utils import (
 def train_and_evaluate(
     test_size: float = 0.2,
     random_state: int = 42,
-    hidden_layers: tuple[int, ...] = (256, 128, 64),
+    hidden_layers: Tuple[int, ...] = (256, 128, 64),
     dropout: float = 0.15,
     epochs: int = 150,
     batch_size: int = 64,
@@ -36,7 +35,7 @@ def train_and_evaluate(
     weight_decay: float = 1e-5,
     feature_mode: str = "combined",
     device: str = "auto",
-) -> dict[str, float]:
+) -> Dict[str, float]:
     set_global_seed(random_state)
     torch_device = get_torch_device() if device == "auto" else None
     frame = load_dataset()

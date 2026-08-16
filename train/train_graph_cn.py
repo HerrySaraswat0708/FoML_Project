@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Dict
 
 from sklearn.model_selection import train_test_split
 
@@ -25,7 +24,7 @@ def train_and_evaluate(
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-5,
     device: str = "auto",
-) -> dict[str, float]:
+) -> Dict[str, float]:
     set_global_seed(random_state)
     torch_device = get_torch_device() if device == "auto" else None
     frame = load_dataset()

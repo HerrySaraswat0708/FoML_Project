@@ -1,12 +1,11 @@
-from __future__ import annotations
-
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from typing import Tuple
 
 
 def build_mlp_regressor(
-    hidden_layer_sizes: tuple[int, ...] = (256, 128, 64),
+    hidden_layer_sizes: Tuple[int, ...] = (256, 128, 64),
     alpha: float = 1e-4,
     learning_rate_init: float = 1e-3,
     max_iter: int = 250,
@@ -36,7 +35,7 @@ def build_mlp_regressor(
 
 
 def build_mlp_classifier(
-    hidden_layer_sizes: tuple[int, ...] = (256, 128, 64),
+    hidden_layer_sizes: Tuple[int, ...] = (256, 128, 64),
     alpha: float = 1e-4,
     learning_rate_init: float = 1e-3,
     max_iter: int = 250,

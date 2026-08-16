@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import json
 import os
 import sys
 from pathlib import Path
+from typing import Dict
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
@@ -106,7 +105,7 @@ def save_group_counts(frame: pd.DataFrame) -> None:
 
 
 def save_correlation_heatmap(frame: pd.DataFrame) -> None:
-    corr = frame[DESCRIPTOR_COLUMNS + ["Solubility"]].corr(numeric_only=True)
+    corr = frame[DESCRIPTOR_COLUMNS + ["Solubility"]].corr()
     fig, ax = plt.subplots(figsize=(11, 9))
     image = ax.imshow(corr.to_numpy(), cmap="coolwarm", vmin=-1.0, vmax=1.0)
     ax.set_xticks(range(len(corr.columns)))
@@ -124,7 +123,7 @@ def save_correlation_heatmap(frame: pd.DataFrame) -> None:
 def save_top_correlations(frame: pd.DataFrame) -> pd.Series:
     correlations = (
         frame[DESCRIPTOR_COLUMNS + ["Solubility"]]
-        .corr(numeric_only=True)["Solubility"]
+        .corr()["Solubility"]
         .drop(labels=["Solubility"])
         .sort_values(key=lambda s: s.abs(), ascending=False)
     )
@@ -148,7 +147,7 @@ def save_descriptor_panels(frame: pd.DataFrame) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(11, 8))
     axes = axes.ravel()
 
-    for ax, column in zip(axes, descriptors, strict=False):
+    for ax, column in zip(axes, descriptors):
         x = frame[column].to_numpy(dtype=float)
         y = frame["Solubility"].to_numpy(dtype=float)
         coeffs = np.polyfit(x, y, deg=1)
@@ -168,7 +167,7 @@ def save_descriptor_panels(frame: pd.DataFrame) -> None:
     plt.close(fig)
 
 
-def save_pca_projection(frame: pd.DataFrame) -> dict[str, float]:
+def save_pca_projection(frame: pd.DataFrame) -> Dict[str, float]:
     features = frame[DESCRIPTOR_COLUMNS].to_numpy(dtype=float)
     scaled = StandardScaler().fit_transform(features)
     pca = PCA(n_components=2, random_state=42)
@@ -229,7 +228,7 @@ def save_solubility_outliers(frame: pd.DataFrame) -> pd.DataFrame:
 def save_summary(
     frame: pd.DataFrame,
     correlations: pd.Series,
-    pca_summary: dict[str, float],
+    pca_summary: Dict[str, float],
     extremes: pd.DataFrame,
 ) -> None:
     summary = {

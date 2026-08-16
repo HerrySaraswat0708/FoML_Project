@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Dict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -23,7 +22,7 @@ from utils.training_utils import save_sklearn_run, set_global_seed
 BEST_CLASSICAL_CONFIGS_PATH = OUTPUTS_DIR / "tuning" / "best_classical_configs.json"
 
 
-def load_best_classical_configs() -> dict[str, dict[str, object]]:
+def load_best_classical_configs() -> Dict[str, Dict[str, object]]:
     if not BEST_CLASSICAL_CONFIGS_PATH.exists():
         return {}
     return json.loads(BEST_CLASSICAL_CONFIGS_PATH.read_text(encoding="utf-8"))
@@ -37,7 +36,7 @@ def resolve_linear_config(
     l1_ratio: float,
     fit_intercept: bool,
     positive: bool,
-) -> dict[str, object]:
+) -> Dict[str, object]:
     config = {
         "model_variant": model_variant,
         "feature_mode": feature_mode,
@@ -93,7 +92,7 @@ def train_and_evaluate(
     fit_intercept: bool = True,
     positive: bool = False,
     use_best_config: bool = True,
-) -> dict[str, float]:
+) -> Dict[str, float]:
     set_global_seed(random_state)
     resolved = resolve_linear_config(
         use_best_config=use_best_config,
