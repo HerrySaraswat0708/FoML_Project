@@ -1,0 +1,21 @@
+{
+  "model": "graphnet",
+  "n_params": 13505,
+  "split": {
+    "train": 7864,
+    "valid": 983,
+    "test": 984
+  },
+  "test_mae_mean": 1.4716652929782867,
+  "test_mae_std": 0.11801134306716803,
+  "test_rmse_mean": 1.9023693737271539,
+  "test_rmse_std": 0.10474263484165762,
+  "test_r2_mean": 0.39050640165805817,
+  "test_r2_std": 0.06751378427898792,
+  "seeds": [
+    0,
+    1,
+    2,
+    3
+  ]
+}

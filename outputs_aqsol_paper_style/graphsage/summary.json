@@ -1,0 +1,21 @@
+{
+  "model": "graphsage",
+  "n_params": 22017,
+  "split": {
+    "train": 7864,
+    "valid": 983,
+    "test": 984
+  },
+  "test_mae_mean": 1.2312098443508148,
+  "test_mae_std": 0.010205501605231123,
+  "test_rmse_mean": 1.8940842274825986,
+  "test_rmse_std": 0.12938710949777762,
+  "test_r2_mean": 0.3950645327568054,
+  "test_r2_std": 0.08371844350272457,
+  "seeds": [
+    0,
+    1,
+    2,
+    3
+  ]
+}

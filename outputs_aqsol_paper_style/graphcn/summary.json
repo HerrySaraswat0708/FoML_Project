@@ -1,0 +1,21 @@
+{
+  "model": "graphcn",
+  "n_params": 13121,
+  "split": {
+    "train": 7864,
+    "valid": 983,
+    "test": 984
+  },
+  "test_mae_mean": 1.2343953549861908,
+  "test_mae_std": 0.017925158557203114,
+  "test_rmse_mean": 1.882484493433871,
+  "test_rmse_std": 0.04715270850844722,
+  "test_r2_mean": 0.4042551666498184,
+  "test_r2_std": 0.029764507240045774,
+  "seeds": [
+    0,
+    1,
+    2,
+    3
+  ]
+}

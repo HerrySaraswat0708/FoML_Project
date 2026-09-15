@@ -481,7 +481,7 @@ def train_graph_binary_classifier(
         for batch in train_loader:
             batch = batch.to(resolved_device)
             optimizer.zero_grad()
-            logits = model(batch.x, batch.edge_index, batch.batch)
+            logits = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
             loss = loss_fn(logits, batch.y.view(-1, 1))
             loss.backward()
             optimizer.step()
@@ -497,7 +497,7 @@ def train_graph_binary_classifier(
         with torch.no_grad():
             for batch in val_loader:
                 batch = batch.to(resolved_device)
-                logits = model(batch.x, batch.edge_index, batch.batch)
+                logits = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
                 loss = loss_fn(logits, batch.y.view(-1, 1))
                 total_val_loss += loss.item() * batch.num_graphs
                 total_val_graphs += batch.num_graphs
@@ -533,7 +533,7 @@ def predict_graph_binary_classifier(model, dataset, batch_size: int = 32) -> Tup
     with torch.no_grad():
         for batch in loader:
             batch = batch.to(resolved_device)
-            logits = model(batch.x, batch.edge_index, batch.batch)
+            logits = model(batch.x, batch.edge_index, batch.batch, getattr(batch, "edge_attr", None))
             probabilities.extend(torch.sigmoid(logits).view(-1).cpu().numpy().tolist())
 
     scores = np.asarray(probabilities, dtype=np.float32)
