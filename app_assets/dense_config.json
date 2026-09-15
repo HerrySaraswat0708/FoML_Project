@@ -1,0 +1,10 @@
+{
+  "input_dim": 1036,
+  "hidden_layers": [
+    256,
+    128,
+    64
+  ],
+  "dropout": 0.15,
+  "feature_mode": "combined"
+}
