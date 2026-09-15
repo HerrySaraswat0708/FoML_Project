@@ -1,0 +1,18 @@
+{
+  "rmse": 1.85417902469635,
+  "mae": 1.4392415285110474,
+  "r2": 0.3658716678619385,
+  "feature_mode": "pca3d",
+  "source_feature_mode": "combined",
+  "num_features": 3,
+  "pca_explained_variance": 0.03625255078077316,
+  "hidden_layers": [
+    256,
+    128,
+    64
+  ],
+  "alpha": 0.0001,
+  "learning_rate_init": 0.001,
+  "train_rows": 7984,
+  "test_rows": 1996
+}

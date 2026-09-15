@@ -1,0 +1,16 @@
+{
+  "rmse": 2.2457849979400635,
+  "mae": 1.7716363668441772,
+  "r2": 0.06972748041152954,
+  "model_variant": "linear",
+  "feature_mode": "pca3d",
+  "source_feature_mode": "combined",
+  "num_features": 3,
+  "pca_explained_variance": 0.03625255078077316,
+  "alpha": 1.0,
+  "l1_ratio": 0.5,
+  "fit_intercept": true,
+  "positive": false,
+  "train_rows": 7984,
+  "test_rows": 1996
+}

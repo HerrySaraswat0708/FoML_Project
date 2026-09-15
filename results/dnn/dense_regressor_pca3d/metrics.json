@@ -1,0 +1,22 @@
+{
+  "rmse": 1.8894212245941162,
+  "mae": 1.4727059602737427,
+  "r2": 0.3415369391441345,
+  "feature_mode": "pca3d",
+  "source_feature_mode": "combined",
+  "num_features": 3,
+  "pca_explained_variance": 0.03619757294654846,
+  "hidden_layers": [
+    256,
+    128,
+    64
+  ],
+  "dropout": 0.15,
+  "epochs": 150,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-05,
+  "device": "cuda",
+  "train_rows": 7984,
+  "test_rows": 1996
+}

@@ -1,0 +1,16 @@
+{
+  "rmse": 1.3713564281490855,
+  "mae": 1.0245212316513062,
+  "r2": 0.6531237363815308,
+  "model_variant": "lasso",
+  "feature_mode": "combined",
+  "source_feature_mode": "combined",
+  "num_features": 1036,
+  "pca_explained_variance": null,
+  "alpha": 0.01,
+  "l1_ratio": 0.5,
+  "fit_intercept": true,
+  "positive": false,
+  "train_rows": 7984,
+  "test_rows": 1996
+}

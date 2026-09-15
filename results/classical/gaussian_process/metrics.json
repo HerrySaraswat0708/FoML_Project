@@ -1,0 +1,18 @@
+{
+  "rmse": 1.2557630909277506,
+  "mae": 0.8935800490643062,
+  "r2": 0.7091364451933239,
+  "feature_mode": "descriptor",
+  "source_feature_mode": "descriptor",
+  "num_features": 12,
+  "pca_explained_variance": null,
+  "kernel_name": "rational_quadratic",
+  "length_scale": 2.0,
+  "matern_nu": 1.5,
+  "rq_alpha": 0.3,
+  "alpha": 0.001,
+  "train_rows": 7984,
+  "gp_train_rows": 500,
+  "test_rows": 1996,
+  "approximation_strategy": "representative_subset_exact_gp"
+}

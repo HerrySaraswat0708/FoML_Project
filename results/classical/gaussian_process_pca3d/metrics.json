@@ -1,0 +1,16 @@
+{
+  "rmse": 2.287848807695564,
+  "mae": 1.8003125782542706,
+  "r2": 0.03455281496234097,
+  "feature_mode": "pca3d",
+  "source_feature_mode": "combined",
+  "num_features": 3,
+  "pca_explained_variance": 0.03625255078077316,
+  "kernel_name": "rbf",
+  "length_scale": 1.0,
+  "matern_nu": 1.5,
+  "rq_alpha": 1.0,
+  "alpha": 1e-06,
+  "train_rows": 7984,
+  "test_rows": 1996
+}

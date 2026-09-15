@@ -1,0 +1,14 @@
+{
+  "rmse": 1.047053342300159,
+  "mae": 0.7434681244868218,
+  "r2": 0.7977858722410299,
+  "hidden_channels": 128,
+  "dropout": 0.05,
+  "epochs": 180,
+  "batch_size": 48,
+  "learning_rate": 0.0005,
+  "weight_decay": 1e-05,
+  "device": "cuda",
+  "train_graphs": 7984,
+  "test_graphs": 1996
+}

@@ -1,0 +1,14 @@
+{
+  "rmse": 1.4307997226715088,
+  "mae": 1.0396031141281128,
+  "r2": 0.6224004030227661,
+  "model_variant": "ridge",
+  "feature_mode": "combined",
+  "num_features": 1036,
+  "alpha": 0.1,
+  "l1_ratio": 0.5,
+  "fit_intercept": true,
+  "positive": false,
+  "train_rows": 7984,
+  "test_rows": 1996
+}

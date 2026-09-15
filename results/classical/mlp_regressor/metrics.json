@@ -1,0 +1,16 @@
+{
+  "rmse": 1.2087767124176025,
+  "mae": 0.8517211675643921,
+  "r2": 0.7304954528808594,
+  "feature_mode": "combined",
+  "num_features": 1036,
+  "hidden_layers": [
+    256,
+    128,
+    64
+  ],
+  "alpha": 0.0001,
+  "learning_rate_init": 0.001,
+  "train_rows": 7984,
+  "test_rows": 1996
+}

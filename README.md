@@ -1372,40 +1372,49 @@ This is useful for presentations because the experiment outputs become browsable
 
 ### 13. Current Results Already Present In This Workspace
 
-At the moment this workspace contains saved outputs for:
-
-- linear regression
-- Gaussian process regression
-- dense regressor
-
-It does **not** currently contain saved outputs for:
-
-- `mlp_regressor`
-- graph regressors
-- tuning runs
-- ablation runs
+This workspace contains saved outputs for every model family: classical
+regression, DNN, and all four graph models (including the manually tuned
+`graph_mp_tuned`), plus PCA3D-feature variants. A git-tracked snapshot of
+these results — a combined leaderboard plus per-model metrics and sample
+predictions — lives in [`results/`](results/) so they're visible on GitHub
+without re-running the pipeline; full predictions, model weights, and
+training histories stay in the local (gitignored) `outputs/` folder.
 
 #### 13.1 Current regression leaderboard
 
 | Rank | Model | RMSE | MAE | R^2 |
 |---:|---|---:|---:|---:|
-| 1 | DenseRegressor | 1.2306 | 0.8730 | 0.7207 |
-| 2 | LinearRegression | 1.5715 | 1.1914 | 0.5445 |
-| 3 | GaussianProcessRegressor | 1.6700 | 1.1510 | 0.4856 |
+| 1 | GraphMP (tuned) | 1.0471 | 0.7435 | 0.7978 |
+| 2 | GraphSAGE | 1.0766 | 0.7701 | 0.7862 |
+| 3 | GraphNET | 1.0992 | 0.7838 | 0.7771 |
+| 4 | GraphMP | 1.1178 | 0.7870 | 0.7695 |
+| 5 | MLPRegressor (sklearn) | 1.1618 | 0.8117 | 0.7512 |
+| 6 | DenseRegressor | 1.1771 | 0.8473 | 0.7446 |
+| 7 | GraphCN | 1.1943 | 0.8670 | 0.7369 |
+| 8 | MLPRegressor (classical) | 1.2088 | 0.8517 | 0.7305 |
+| 9 | GaussianProcessRegressor | 1.2558 | 0.8936 | 0.7091 |
+| 10 | LassoRegression | 1.3714 | 1.0245 | 0.6531 |
+| 11 | RidgeRegression | 1.4308 | 1.0396 | 0.6224 |
+| 12 | LinearRegression | 1.4616 | 1.0629 | 0.6062 |
+
+Full table (including PCA3D variants) is in `results/leaderboard.csv`.
 
 Interpretation:
 
-- the current best saved model is the PyTorch dense regressor
-- linear regression is a respectable simple baseline
-- GPR is the most expensive saved model here but not the best performer on this run
+- all four graph models now outperform every tabular model, with the
+  manually tuned `GraphMP` in the lead — edge-aware message passing plus
+  the global descriptor fusion pays off once properly tuned
+- the DNN and scikit-learn MLP remain the strongest tabular learners
+- GPR is still the most expensive model to train here, and it is now
+  solidly mid-pack rather than the weakest result
 
 #### 13.2 Dense regressor training behavior
 
 From `outputs/dnn/dense_regressor/history.csv`:
 
-- trained for `150` epochs
-- best validation loss occurred at **epoch 134**
-- best validation loss was about **1.5817**
+- trained for `105` epochs (of a `150`-epoch budget)
+- best validation loss occurred at **epoch 85**
+- best validation loss was about **0.2398**
 
 This matches the code behavior of restoring the best validation checkpoint rather than using the final epoch blindly.
 
@@ -1413,11 +1422,11 @@ This matches the code behavior of restoring the best validation checkpoint rathe
 
 | Model | Mean absolute error | Median absolute error | Max absolute error |
 |---|---:|---:|---:|
-| LinearRegression | 1.1914 | 0.9678 | 13.9064 |
-| GaussianProcessRegressor | 1.1510 | 0.7581 | 7.9348 |
-| DenseRegressor | 0.8730 | 0.6147 | 6.6744 |
+| LinearRegression | 1.0629 | 0.8316 | 15.6072 |
+| GaussianProcessRegressor | 0.8936 | 0.6269 | 6.0456 |
+| DenseRegressor | 0.8473 | 0.6076 | 6.3570 |
 
-This again shows the dense regressor has the strongest current test-set behavior among the saved runs.
+Among these three, the dense regressor has the best mean/median error, though GPR edges it out on the single worst-case prediction — but the graph models in 13.1 beat all three on RMSE/R².
 
 ### 14. What You Get After Running Each Category
 

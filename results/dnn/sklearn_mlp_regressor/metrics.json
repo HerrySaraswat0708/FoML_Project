@@ -1,0 +1,18 @@
+{
+  "rmse": 1.161840558052063,
+  "mae": 0.8117481470108032,
+  "r2": 0.7511591163780263,
+  "feature_mode": "combined",
+  "source_feature_mode": "combined",
+  "num_features": 1036,
+  "pca_explained_variance": null,
+  "hidden_layers": [
+    256,
+    128,
+    64
+  ],
+  "alpha": 0.0001,
+  "learning_rate_init": 0.001,
+  "train_rows": 7985,
+  "test_rows": 1997
+}

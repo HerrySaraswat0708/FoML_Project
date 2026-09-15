@@ -1,0 +1,17 @@
+family,model_name,rmse,mae,r2,hidden_channels,dropout,epochs,batch_size,learning_rate,weight_decay,device,train_graphs,test_graphs,feature_mode,source_feature_mode,num_features,pca_explained_variance,hidden_layers,alpha,learning_rate_init,train_rows,test_rows,kernel_name,length_scale,matern_nu,rq_alpha,gp_train_rows,approximation_strategy,model_variant,l1_ratio,fit_intercept,positive
+graphml,graph_mp_tuned,1.047053342300159,0.7434681244868218,0.7977858722410299,128,0.05,180,48,0.0005,1e-05,cuda,7984,1996,,,,,,,,,,,,,,,,,,,
+graphml,graph_sage,1.0766118941274931,0.7700650711572048,0.7862076177775287,64,,120,32,0.001,1e-05,cuda,7984,1996,,,,,,,,,,,,,,,,,,,
+graphml,graph_net,1.099200612658985,0.7838060142759524,0.7771422183899301,64,,120,32,0.001,1e-05,cuda,7984,1996,,,,,,,,,,,,,,,,,,,
+graphml,graph_mp,1.1177843877679021,0.7870060343750266,0.7695429711298253,64,,120,32,0.001,1e-05,cuda,7984,1996,,,,,,,,,,,,,,,,,,,
+dnn,sklearn_mlp_regressor,1.161840558052063,0.8117481470108032,0.7511591163780263,,,,,,,,,,combined,combined,1036,,"[256, 128, 64]",0.0001,0.001,7985,1997,,,,,,,,,,
+dnn,dense_regressor,1.1771165132522583,0.8472668528556824,0.7445725368817209,,0.15,150,64,0.001,1e-05,cpu,,,combined,combined,1036,,"[256, 128, 64]",,,7985,1997,,,,,,,,,,
+graphml,graph_cn,1.1943207486715277,0.8669740558892025,0.736903037504755,64,,120,32,0.001,1e-05,cuda,7984,1996,,,,,,,,,,,,,,,,,,,
+classical,mlp_regressor,1.2087767124176025,0.8517211675643921,0.7304954528808594,,,,,,,,,,combined,,1036,,"[256, 128, 64]",0.0001,0.001,7984,1996,,,,,,,,,,
+classical,gaussian_process,1.2557630909277506,0.8935800490643062,0.7091364451933239,,,,,,,,,,descriptor,descriptor,12,,,0.001,,7984,1996,rational_quadratic,2.0,1.5,0.3,500,representative_subset_exact_gp,,,,
+classical,lasso_regression,1.3713564281490855,1.0245212316513062,0.6531237363815308,,,,,,,,,,combined,combined,1036,,,0.01,,7984,1996,,,,,,,lasso,0.5,True,False
+classical,ridge_regression,1.4307997226715088,1.0396031141281128,0.6224004030227661,,,,,,,,,,combined,,1036,,,0.1,,7984,1996,,,,,,,ridge,0.5,True,False
+classical,linear_regression,1.4615657329559326,1.0629479885101318,0.6062093496832286,,,,,,,,,,combined,combined,1036,,,1.0,,7985,1997,,,,,,,linear,0.5,True,False
+dnn,sklearn_mlp_regressor_pca3d,1.85417902469635,1.4392415285110474,0.3658716678619385,,,,,,,,,,pca3d,combined,3,0.03625255078077316,"[256, 128, 64]",0.0001,0.001,7984,1996,,,,,,,,,,
+dnn,dense_regressor_pca3d,1.8894212245941162,1.4727059602737427,0.3415369391441345,,0.15,150,64,0.001,1e-05,cuda,,,pca3d,combined,3,0.03619757294654846,"[256, 128, 64]",,,7984,1996,,,,,,,,,,
+classical,linear_regression_pca3d,2.2457849979400635,1.7716363668441772,0.06972748041152954,,,,,,,,,,pca3d,combined,3,0.03625255078077316,,1.0,,7984,1996,,,,,,,linear,0.5,True,False
+classical,gaussian_process_pca3d,2.287848807695564,1.8003125782542706,0.03455281496234097,,,,,,,,,,pca3d,combined,3,0.03625255078077316,,1e-06,,7984,1996,rbf,1.0,1.5,1.0,,,,,,
